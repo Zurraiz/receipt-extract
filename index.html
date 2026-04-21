@@ -920,10 +920,7 @@
     document.getElementById("exportCsv").addEventListener("click", () => exportData("csv"));
 
     function appendToExistingCsv(csvText, existingFilename) {
-        const rows = csvText
-            .split(/\r?\n/)
-            .filter(line => line.trim() !== "")
-            .map(line => line.split(","));
+        const rows = parseCsv(csvText);
 
         if (!rows.length) {
             throw new Error("Selected CSV is empty");
