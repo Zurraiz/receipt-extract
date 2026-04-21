@@ -508,13 +508,17 @@
             <div class="section-label" style="margin-bottom:0">Extracted data</div>
             <div style="display:flex;align-items:center;gap:8px">
                 <div class="export-row">
+                    <button class="export-btn" id="exportJson">
+                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        JSON
+                    </button>
                     <button class="export-btn" id="exportCsv">
                         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Download CSV
+                        CSV
                     </button>
                     <button class="export-btn" id="appendCsvBtn">
                         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Append to existing CSV
+                        Append to CSV
                     </button>
                     <input type="file" id="appendCsvInput" class="hidden-file-input" accept=".csv,text/csv" />
                 </div>
@@ -671,7 +675,7 @@
         sessionHistory.unshift({
             filename,
             schema,
-            time: new Date().toLocaleString(),
+            timestamp: new Date().toISOString(),
             data: structuredClone(data)
         });
 
@@ -693,17 +697,17 @@
         }
 
         historyCard.style.display = "block";
-        countEl.textContent = `${sessionHistory.length} ${sessionHistory.length === 1 ? "entry" : "entries"}`;
+        countEl.textContent = `${sessionHistory.length} ${sessionHistory.length === 1 ? "extraction" : "extractions"}`;
 
         tbody.innerHTML = sessionHistory.map((entry, idx) => `
             <tr>
                 <td title="${escapeHtml(entry.filename)}">${escapeHtml(entry.filename)}</td>
                 <td>${escapeHtml(entry.schema)}</td>
-                <td>${escapeHtml(entry.time)}</td>
+                <td>${new Date(entry.timestamp).toLocaleTimeString([], { hour12: false })}</td>
                 <td>
                     <div class="history-actions">
-                        <button class="history-btn" data-action="view" data-idx="${idx}">View</button>
-                        <button class="history-btn" data-action="json" data-idx="${idx}">Download JSON</button>
+                        <button class="export-btn" data-action="view" data-idx="${idx}">View</button>
+                        <button class="export-btn" data-action="json" data-idx="${idx}">Download JSON</button>
                     </div>
                 </td>
             </tr>
@@ -912,28 +916,71 @@
         } catch(e) { showToast("Export failed", "error"); }
     }
 
+    document.getElementById("exportJson").addEventListener("click", () => exportData("json"));
     document.getElementById("exportCsv").addEventListener("click", () => exportData("csv"));
 
-    function appendToExistingCsv(csvText) {
-        const rows = parseCsv(csvText);
+    function appendToExistingCsv(csvText, existingFilename) {
+        const rows = csvText
+            .split(/\r?\n/)
+            .filter(line => line.trim() !== "")
+            .map(line => line.split(","));
+
+        if (!rows.length) {
+            throw new Error("Selected CSV is empty");
+        }
+
+        const existingHeaders = rows[0].map(h => String(h || "").trim());
         const currentHeaders = extractedData ? Object.keys(extractedData) : [];
-        const existingHeaders = rows.length > 0 ? rows[0].map(h => String(h || "").trim()) : [];
-        const mergedHeaders = [...existingHeaders, ...currentHeaders.filter(h => !existingHeaders.includes(h))];
 
-        const existingRows = rows.slice(1).map(row => {
-            const record = {};
-            existingHeaders.forEach((header, idx) => {
-                record[header] = row[idx] ?? "";
+        const isFieldValueFormat =
+            existingHeaders.length === 2 &&
+            existingHeaders[0].toLowerCase() === "field" &&
+            existingHeaders[1].toLowerCase() === "value";
+
+        let mergedHeaders;
+        let mergedRows;
+
+        if (isFieldValueFormat) {
+            const existingObject = {};
+            rows.slice(1).forEach(row => {
+                const key = (row[0] || "").trim();
+                if (key) existingObject[key] = row[1] ?? "";
             });
-            return mergedHeaders.map(header => record[header] ?? "");
-        });
 
-        const currentRow = mergedHeaders.map(header => {
-            if (!extractedData || !(header in extractedData)) return "";
-            return valueToCell(extractedData[header]);
-        });
+            const dataHeaders = [...Object.keys(existingObject), ...currentHeaders.filter(h => !(h in existingObject))];
+            mergedHeaders = ["source_file", ...dataHeaders];
 
-        const mergedRows = [mergedHeaders, ...existingRows, currentRow];
+            const existingRow = mergedHeaders.map(header => {
+                if (header === "source_file") return existingFilename;
+                return existingObject[header] ?? "";
+            });
+
+            const currentRow = mergedHeaders.map(header => {
+                if (header === "source_file") return selectedFile ? selectedFile.name : "current_extraction";
+                if (!extractedData || !(header in extractedData)) return "";
+                return valueToCell(extractedData[header]);
+            });
+
+            mergedRows = [mergedHeaders, existingRow, currentRow];
+        } else {
+            mergedHeaders = [...existingHeaders, ...currentHeaders.filter(h => !existingHeaders.includes(h))];
+
+            const existingRows = rows.slice(1).map(row => {
+                const record = {};
+                existingHeaders.forEach((header, idx) => {
+                    record[header] = row[idx] ?? "";
+                });
+                return mergedHeaders.map(header => record[header] ?? "");
+            });
+
+            const currentRow = mergedHeaders.map(header => {
+                if (!extractedData || !(header in extractedData)) return "";
+                return valueToCell(extractedData[header]);
+            });
+
+            mergedRows = [mergedHeaders, ...existingRows, currentRow];
+        }
+
         const mergedCsv = rowsToCsv(mergedRows);
         downloadBlob(mergedCsv, "text/csv;charset=utf-8", "extracted_data_appended.csv");
         showToast("CSV appended and downloaded", "success");
@@ -963,7 +1010,7 @@
         const reader = new FileReader();
         reader.onload = () => {
             try {
-                appendToExistingCsv(String(reader.result || ""));
+                appendToExistingCsv(String(reader.result || ""), file.name);
             } catch (err) {
                 showToast(err.message || "Failed to append CSV", "error");
             }
@@ -992,7 +1039,8 @@
 
         if (action === "json") {
             const jsonStr = JSON.stringify(entry.data, null, 2);
-            downloadBlob(jsonStr, "application/json", `extracted_data_${idx + 1}.json`);
+            const baseName = (entry.filename || "document").replace(/\.[^.]+$/, "");
+            downloadBlob(jsonStr, "application/json", `${baseName}_extracted.json`);
             showToast("Downloaded history entry as JSON", "success");
         }
     });
