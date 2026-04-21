@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocExtract — AI Document Data Extraction</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #ffffff;
+            --surface: #ffffff;
+            --surface-2: #f7f8fa;
+            --border: #d4d7dc;
+            --border-hover: #b0b5be;
+            --text: #0f1117;
+            --text-muted: #6b7280;
+            --text-dim: #c4c8ce;
+            --accent: #1a6ef5;
+            --accent-dim: #eff4ff;
+            --accent-border: #93b8fb;
+            --green: #0d9e6a;
+            --green-dim: #ecfdf5;
+            --green-border: #6edbb8;
+            --red: #dc2626;
+            --red-dim: #fef2f2;
+            --red-border: #f99;
+            --amber: #b45309;
+            --amber-dim: #fffbeb;
+            --amber-border: #fbbf24;
+            --radius: 10px;
+            --radius-lg: 14px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 36px 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .wrap { max-width: 900px; margin: 0 auto; }
+
+        /* ── HEADER ── */
+        header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 40px; padding-bottom: 24px;
+            border-bottom: 1.5px solid var(--border);
+        }
+
+        .logo { display: flex; align-items: center; gap: 10px; }
+
+        .logo-icon {
+            width: 32px; height: 32px; background: var(--accent);
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .logo-icon:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,110,245,0.28); }
+        .logo-icon svg { width: 17px; height: 17px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+        .logo-text { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+        .logo-text span { color: var(--accent); }
+
+        .badge {
+            font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted);
+            background: var(--surface-2); border: 1.5px solid var(--border);
+            padding: 4px 10px; border-radius: 6px; letter-spacing: 0.3px;
+        }
+
+        .section-label {
+            font-size: 11px; font-weight: 500; letter-spacing: 0.8px;
+            text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;
+        }
+
+        .card {
+            background: var(--surface); border: 1.5px solid var(--border);
+            border-radius: var(--radius-lg); padding: 24px; margin-bottom: 14px;
+        }
+
+        /* ── SCHEMA GRID ── */
+        .schema-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;
+        }
+
+        .schema-btn {
+            background: var(--surface-2); border: 1.5px solid var(--border);
+            border-radius: var(--radius); padding: 12px 14px; cursor: pointer;
+            text-align: left; transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1),
+            box-shadow 0.18s ease, border-color 0.15s ease, background 0.15s ease;
+            outline: none;
+        }
+
+        .schema-btn:hover {
+            border-color: var(--border-hover); background: #fff;
+            transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .schema-btn:active { transform: translateY(0) scale(0.98); transition: transform 0.08s ease; }
+
+        .schema-btn.active {
+            background: var(--accent-dim); border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(26,110,245,0.12);
+        }
+
+        .schema-btn.active:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(26,110,245,0.18), 0 0 0 3px rgba(26,110,245,0.12); }
+
+        .schema-icon-wrap {
+            width: 28px; height: 28px; border-radius: 7px; background: #dde1e8;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 8px;
+            transition: background 0.15s ease, transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+        }
+
+        .schema-btn:hover .schema-icon-wrap { background: #c8cdd7; transform: scale(1.08); }
+        .schema-btn.active .schema-icon-wrap { background: var(--accent); }
+
+        .schema-icon-wrap svg { width: 14px; height: 14px; stroke: #6b7280; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.15s; }
+        .schema-btn:hover .schema-icon-wrap svg { stroke: #3a3f4a; }
+        .schema-btn.active .schema-icon-wrap svg { stroke: #fff; }
+
+        .schema-name { font-size: 13px; font-weight: 500; color: var(--text-muted); transition: color 0.15s; }
+        .schema-btn:hover .schema-name { color: var(--text); }
+        .schema-btn.active .schema-name { color: var(--accent); }
+
+        /* ── CUSTOM FIELDS ── */
+        .custom-fields-wrap {
+            display: none; margin-top: 14px; padding-top: 14px;
+            border-top: 1.5px solid var(--border);
+        }
+
+        .custom-field-row { display: flex; gap: 8px; margin-bottom: 8px; }
+
+        .custom-field-row input {
+            flex: 1; padding: 9px 12px; font-family: 'DM Sans', sans-serif;
+            font-size: 13px; background: var(--surface-2);
+            border: 1.5px solid var(--border); border-radius: 8px;
+            color: var(--text); outline: none;
+            transition: border-color 0.15s ease;
+        }
+
+        .custom-field-row input:focus { border-color: var(--accent); }
+        .custom-field-row input::placeholder { color: var(--text-dim); }
+
+        .add-field-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px 14px; font-family: 'DM Sans', sans-serif;
+            font-size: 12px; font-weight: 500; color: var(--accent);
+            background: var(--accent-dim); border: 1.5px solid var(--accent-border);
+            border-radius: 8px; cursor: pointer;
+            transition: background 0.15s, transform 0.15s;
+        }
+
+        .add-field-btn:hover { background: #ddeaff; transform: translateY(-1px); }
+        .add-field-btn svg { width: 12px; height: 12px; stroke: var(--accent); fill: none; stroke-width: 2.5; }
+
+        .remove-field-btn {
+            width: 34px; height: 34px; flex-shrink: 0;
+            background: var(--surface-2); border: 1.5px solid var(--border);
+            border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s, border-color 0.15s, transform 0.15s;
+        }
+
+        .remove-field-btn:hover { background: var(--red-dim); border-color: var(--red-border); transform: scale(1.08); }
+        .remove-field-btn svg { width: 12px; height: 12px; stroke: var(--text-muted); fill: none; stroke-width: 2; transition: stroke 0.15s; }
+        .remove-field-btn:hover svg { stroke: var(--red); }
+
+        /* ── UPLOAD ── */
+        .upload-card {
+            border: 1.5px solid var(--border); border-radius: var(--radius-lg);
+            overflow: hidden; margin-bottom: 14px; background: var(--surface);
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border); border-radius: 10px; margin: 8px;
+            padding: 44px 20px; text-align: center; cursor: pointer;
+            transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+            background: var(--surface-2); position: relative;
+        }
+
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--accent); background: var(--accent-dim); transform: scale(1.005);
+        }
+
+        .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+        .upload-icon {
+            width: 44px; height: 44px; background: #fff; border: 1.5px solid var(--border);
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 14px;
+            transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.15s ease;
+        }
+
+        .upload-zone:hover .upload-icon, .upload-zone.drag-over .upload-icon { transform: translateY(-3px); border-color: var(--accent-border); }
+        .upload-icon svg { width: 18px; height: 18px; stroke: var(--text-muted); fill: none; stroke-width: 1.5; transition: stroke 0.15s; }
+        .upload-zone:hover .upload-icon svg, .upload-zone.drag-over .upload-icon svg { stroke: var(--accent); }
+
+        .upload-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; transition: color 0.15s; }
+        .upload-zone:hover .upload-title, .upload-zone.drag-over .upload-title { color: var(--accent); }
+        .upload-sub { font-size: 12px; color: var(--text-muted); }
+
+        .preview-strip {
+            display: none; align-items: center; gap: 14px;
+            padding: 12px 16px; background: var(--surface-2);
+            border-top: 1.5px solid var(--border);
+        }
+
+        .preview-thumb {
+            width: 48px; height: 48px; border-radius: 8px; object-fit: cover;
+            border: 1.5px solid var(--border); flex-shrink: 0;
+        }
+
+        .preview-thumb.pdf-thumb {
+            display: flex; align-items: center; justify-content: center;
+            background: var(--accent-dim); border-color: var(--accent-border);
+            font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
+            color: var(--accent);
+        }
+
+        .preview-info { flex: 1; min-width: 0; }
+        .preview-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .preview-size { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+        .preview-clear {
+            width: 28px; height: 28px; border: 1.5px solid var(--border);
+            border-radius: 7px; background: var(--surface);
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: border-color 0.15s, background 0.15s, transform 0.15s; flex-shrink: 0;
+        }
+
+        .preview-clear:hover { border-color: var(--red-border); background: var(--red-dim); transform: scale(1.08); }
+        .preview-clear svg { width: 13px; height: 13px; stroke: var(--text-muted); fill: none; stroke-width: 1.8; transition: stroke 0.15s; }
+        .preview-clear:hover svg { stroke: var(--red); }
+
+        .run-btn {
+            display: none; width: 100%; margin-top: 10px; padding: 13px 0;
+            background: var(--accent); color: #fff;
+            font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+            border: none; border-radius: var(--radius); cursor: pointer;
+            transition: background 0.15s, transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s;
+        }
+
+        .run-btn:hover { background: #1560e0; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(26,110,245,0.3); }
+        .run-btn:active { transform: translateY(0) scale(0.98); box-shadow: none; }
+        .run-btn:disabled { background: var(--text-muted); cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* ── LOADING ── */
+        .loading-card {
+            display: none; background: var(--surface);
+            border: 1.5px solid var(--border); border-radius: var(--radius-lg);
+            padding: 18px 24px; margin-bottom: 14px;
+        }
+
+        .loading-inner { display: flex; align-items: center; gap: 12px; }
+
+        .spinner {
+            width: 16px; height: 16px; border: 2px solid var(--border);
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin 0.75s linear infinite; flex-shrink: 0;
+        }
+
+        .loading-text { font-size: 13px; color: var(--text-muted); }
+        .loading-text strong { color: var(--text); font-weight: 500; }
+
+        /* ── RESULTS ── */
+        .results-card {
+            display: none; background: var(--surface);
+            border: 1.5px solid var(--border); border-radius: var(--radius-lg);
+            padding: 20px 24px; margin-bottom: 14px;
+        }
+
+        .results-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 16px; padding-bottom: 14px;
+            border-bottom: 1.5px solid var(--border);
+        }
+
+        .export-row { display: flex; gap: 8px; }
+
+        .export-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 14px; font-family: 'DM Sans', sans-serif;
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            border-radius: 8px; border: 1.5px solid var(--border);
+            background: var(--surface-2); color: var(--text-muted);
+            transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s,
+                        border-color 0.15s, background 0.15s, color 0.15s;
+        }
+
+        .export-btn:hover {
+            border-color: var(--border-hover); background: #fff; color: var(--text);
+            transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+
+        .export-btn:active { transform: translateY(0) scale(0.97); }
+        .export-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+
+        .hidden-file-input { display: none; }
+
+        .clear-results-btn {
+            width: 30px; height: 30px; border: 1.5px solid var(--border);
+            border-radius: 8px; background: var(--surface-2);
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: border-color 0.15s, background 0.15s, transform 0.15s;
+        }
+
+        .clear-results-btn:hover { border-color: var(--red-border); background: var(--red-dim); transform: scale(1.08); }
+        .clear-results-btn svg { width: 13px; height: 13px; stroke: var(--text-muted); fill: none; stroke-width: 1.8; transition: stroke 0.15s; }
+        .clear-results-btn:hover svg { stroke: var(--red); }
+
+        /* ── FIELD TABLE ── */
+        .fields-table { width: 100%; border-collapse: collapse; }
+
+        .fields-table tr { border-bottom: 1px solid var(--border); }
+        .fields-table tr:last-child { border-bottom: none; }
+
+        .fields-table td {
+            padding: 10px 4px; font-size: 13px; vertical-align: top;
+        }
+
+        .field-key {
+            font-family: 'DM Mono', monospace; font-size: 12px;
+            color: var(--text-muted); width: 36%; padding-right: 16px;
+            white-space: nowrap;
+        }
+
+        .field-value { color: var(--text); line-height: 1.5; }
+        .field-value.null-value { color: var(--text-dim); font-style: italic; }
+
+        .field-value pre {
+            font-family: 'DM Mono', monospace; font-size: 11px;
+            background: var(--surface-2); border: 1.5px solid var(--border);
+            border-radius: 6px; padding: 8px 10px;
+            white-space: pre-wrap; word-break: break-word; margin: 0;
+            color: var(--text-muted);
+        }
+
+        /* ── SESSION HISTORY ── */
+        .history-card {
+            display: none; background: var(--surface);
+            border: 1.5px solid var(--border); border-radius: var(--radius-lg);
+            padding: 20px 24px; margin-bottom: 14px;
+        }
+
+        .history-wrap {
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            overflow-x: auto;
+        }
+
+        .history-table {
+            width: 100%; border-collapse: collapse;
+            min-width: 620px;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 10px 12px;
+            font-size: 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .history-table th {
+            font-family: 'DM Mono', monospace;
+            color: var(--text-muted);
+            background: var(--surface-2);
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+
+        .history-table tr:last-child td { border-bottom: none; }
+
+        .history-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .history-btn {
+            display: flex; align-items: center; justify-content: center;
+            padding: 6px 10px; font-family: 'DM Sans', sans-serif;
+            font-size: 11px; font-weight: 500; cursor: pointer;
+            border-radius: 8px; border: 1.5px solid var(--border);
+            background: var(--surface-2); color: var(--text-muted);
+            transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s,
+                        border-color 0.15s, background 0.15s, color 0.15s;
+        }
+
+        .history-btn:hover {
+            border-color: var(--border-hover); background: #fff; color: var(--text);
+            transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+
+        .history-btn:active { transform: translateY(0) scale(0.97); }
+
+        /* ── TOAST ── */
+        .toast-wrap {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; display: flex; flex-direction: column; align-items: center; gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: #1a1d23; color: #fff; font-size: 13px; font-weight: 500;
+            padding: 10px 18px; border-radius: 10px;
+            opacity: 0; transform: translateY(8px);
+            transition: opacity 0.22s ease, transform 0.22s ease;
+            pointer-events: none; display: flex; align-items: center; gap: 8px; max-width: 360px;
+        }
+
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.toast-error { background: #7f1d1d; }
+        .toast.toast-success { background: #064e3b; }
+        .toast svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+
+        footer {
+            margin-top: 36px; padding-top: 20px;
+            border-top: 1.5px solid var(--border);
+            text-align: center; font-size: 12px; color: var(--text-dim);
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 560px) {
+            header { flex-direction: column; align-items: flex-start; gap: 10px; }
+            body { padding: 20px 16px; }
+            .schema-grid { grid-template-columns: 1fr 1fr; }
+            .field-key { width: 42%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="wrap">
+
+    <header>
+        <div class="logo">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+            </div>
+            <span class="logo-text">Doc<span>Extract</span></span>
+        </div>
+        <div class="badge">Gemini · v1.0</div>
+    </header>
+
+    <!-- SCHEMA SELECT -->
+    <div class="card">
+        <div class="section-label">Document Type</div>
+        <div class="schema-grid" id="schemaGrid">
+            <!-- populated by JS -->
+        </div>
+
+        <!-- Custom fields editor -->
+        <div class="custom-fields-wrap" id="customFieldsWrap">
+            <div class="section-label" style="margin-top:4px">Define your fields</div>
+            <div id="customFieldsList"></div>
+            <button class="add-field-btn" id="addFieldBtn">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add field
+            </button>
+        </div>
+    </div>
+
+    <!-- UPLOAD -->
+    <div class="upload-card" id="uploadCard">
+        <div class="upload-zone" id="uploadZone">
+            <input type="file" id="uploadInput" accept="image/*,.pdf" />
+            <div class="upload-icon">
+                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="upload-title" id="uploadTitle">Drop document here or click to browse</div>
+            <div class="upload-sub">PDF, PNG, JPG or WEBP · max 20 MB</div>
+        </div>
+
+        <div class="preview-strip" id="previewStrip">
+            <div id="previewThumbWrap"></div>
+            <div class="preview-info">
+                <div class="preview-name" id="previewName">—</div>
+                <div class="preview-size" id="previewSize">—</div>
+            </div>
+            <div class="preview-clear" id="previewClear">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </div>
+        </div>
+
+        <div style="padding: 0 8px 8px;">
+            <button class="run-btn" id="runBtn">Extract data</button>
+        </div>
+    </div>
+
+    <!-- LOADING -->
+    <div class="loading-card" id="loadingCard">
+        <div class="loading-inner">
+            <div class="spinner"></div>
+            <div class="loading-text"><strong>Extracting data</strong> — analyzing document</div>
+        </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-card" id="resultsCard">
+        <div class="results-header">
+            <div class="section-label" style="margin-bottom:0">Extracted data</div>
+            <div style="display:flex;align-items:center;gap:8px">
+                <div class="export-row">
+                    <button class="export-btn" id="exportCsv">
+                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download CSV
+                    </button>
+                    <button class="export-btn" id="appendCsvBtn">
+                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Append to existing CSV
+                    </button>
+                    <input type="file" id="appendCsvInput" class="hidden-file-input" accept=".csv,text/csv" />
+                </div>
+                <div class="clear-results-btn" id="clearResultsBtn">
+                    <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </div>
+            </div>
+        </div>
+        <table class="fields-table" id="fieldsTable"></table>
+    </div>
+
+    <!-- SESSION HISTORY -->
+    <div class="history-card" id="historyCard">
+        <div class="results-header">
+            <div class="section-label" style="margin-bottom:0">Session History</div>
+            <div class="badge" id="historyCount">0 entries</div>
+        </div>
+        <div class="history-wrap">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Filename</th>
+                        <th>Schema</th>
+                        <th>Time</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer>Powered by Gemini 1.5 Flash · For demo and development use</footer>
+</div>
+
+<script>
+    /* ── STATE ── */
+    let selectedFile = null;
+    let currentSchema = "invoice";
+    let extractedData = null;
+    const sessionHistory = [];
+    const MAX_HISTORY = 20;
+    const SCHEMA_ICONS = {
+        invoice: `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>`,
+        receipt: `<svg viewBox="0 0 24 24"><path d="M4 2v20l3-2 2 2 3-2 2 2 3-2 3 2V2l-3 2-2-2-3 2-2-2-3 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>`,
+        purchase_order: `<svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`,
+        bank_statement: `<svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
+        custom: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`
+    };
+
+    /* ── TOAST ── */
+    const toastWrap = document.getElementById("toastWrap");
+    function showToast(msg, type = "info") {
+        const t = document.createElement("div");
+        t.className = `toast toast-${type}`;
+        const icon = type === "error"
+            ? `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+            : `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+        t.innerHTML = icon + msg;
+        toastWrap.appendChild(t);
+        requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add("show")));
+        setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 250); }, 3400);
+    }
+
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function valueToCell(value) {
+        if (value === null || value === undefined) return "";
+        if (typeof value === "object") return JSON.stringify(value);
+        return String(value);
+    }
+
+    function csvEscape(value) {
+        const raw = value === null || value === undefined ? "" : String(value);
+        const escaped = raw.replace(/\"/g, '""');
+        if (/[",\r\n]/.test(escaped)) return `"${escaped}"`;
+        return escaped;
+    }
+
+    function rowsToCsv(rows) {
+        return rows.map(row => row.map(csvEscape).join(",")).join("\r\n");
+    }
+
+    function parseCsv(text) {
+        const rows = [];
+        let row = [];
+        let field = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            const next = text[i + 1];
+
+            if (inQuotes) {
+                if (ch === '"' && next === '"') {
+                    field += '"';
+                    i++;
+                } else if (ch === '"') {
+                    inQuotes = false;
+                } else {
+                    field += ch;
+                }
+                continue;
+            }
+
+            if (ch === '"') {
+                inQuotes = true;
+            } else if (ch === ",") {
+                row.push(field);
+                field = "";
+            } else if (ch === "\n") {
+                row.push(field.replace(/\r$/, ""));
+                rows.push(row);
+                row = [];
+                field = "";
+            } else {
+                field += ch;
+            }
+        }
+
+        if (field.length > 0 || row.length > 0) {
+            row.push(field.replace(/\r$/, ""));
+            rows.push(row);
+        }
+
+        return rows.filter(r => r.length > 1 || (r[0] && r[0].trim() !== ""));
+    }
+
+    function downloadBlob(content, mimeType, filename) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function getCurrentSchemaLabel() {
+        const active = document.querySelector(`.schema-btn[data-schema="${currentSchema}"] .schema-name`);
+        return active ? active.textContent : currentSchema;
+    }
+
+    function addHistoryEntry(filename, schema, data) {
+        sessionHistory.unshift({
+            filename,
+            schema,
+            time: new Date().toLocaleString(),
+            data: structuredClone(data)
+        });
+
+        if (sessionHistory.length > MAX_HISTORY) {
+            sessionHistory.length = MAX_HISTORY;
+        }
+
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const historyCard = document.getElementById("historyCard");
+        const countEl = document.getElementById("historyCount");
+        const tbody = document.getElementById("historyTableBody");
+
+        if (sessionHistory.length === 0) {
+            historyCard.style.display = "none";
+            return;
+        }
+
+        historyCard.style.display = "block";
+        countEl.textContent = `${sessionHistory.length} ${sessionHistory.length === 1 ? "entry" : "entries"}`;
+
+        tbody.innerHTML = sessionHistory.map((entry, idx) => `
+            <tr>
+                <td title="${escapeHtml(entry.filename)}">${escapeHtml(entry.filename)}</td>
+                <td>${escapeHtml(entry.schema)}</td>
+                <td>${escapeHtml(entry.time)}</td>
+                <td>
+                    <div class="history-actions">
+                        <button class="history-btn" data-action="view" data-idx="${idx}">View</button>
+                        <button class="history-btn" data-action="json" data-idx="${idx}">Download JSON</button>
+                    </div>
+                </td>
+            </tr>
+        `).join("");
+    }
+
+    /* ── SCHEMAS ── */
+    async function loadSchemas() {
+        try {
+            const res = await fetch("/schemas");
+            const schemas = await res.json();
+            const grid = document.getElementById("schemaGrid");
+            grid.innerHTML = "";
+            schemas.forEach(s => {
+                const btn = document.createElement("button");
+                btn.className = "schema-btn" + (s.id === currentSchema ? " active" : "");
+                btn.dataset.schema = s.id;
+                btn.innerHTML = `
+                    <div class="schema-icon-wrap">${SCHEMA_ICONS[s.id] || SCHEMA_ICONS.custom}</div>
+                    <div class="schema-name">${s.label}</div>`;
+                btn.addEventListener("click", () => selectSchema(s.id));
+                grid.appendChild(btn);
+            });
+        } catch(e) { showToast("Failed to load schemas", "error"); }
+    }
+
+    function selectSchema(id) {
+        currentSchema = id;
+        document.querySelectorAll(".schema-btn").forEach(b => {
+            b.classList.toggle("active", b.dataset.schema === id);
+        });
+        document.getElementById("customFieldsWrap").style.display = id === "custom" ? "block" : "none";
+    }
+
+    loadSchemas();
+
+    /* ── CUSTOM FIELDS ── */
+    document.getElementById("addFieldBtn").addEventListener("click", addCustomField);
+
+    function addCustomField(key = "", desc = "") {
+        const list = document.getElementById("customFieldsList");
+        const row = document.createElement("div");
+        row.className = "custom-field-row";
+        row.innerHTML = `
+            <input type="text" placeholder="Field name (e.g. vendor_name)" value="${key}" class="cf-key"/>
+            <input type="text" placeholder="Description (e.g. Name of the vendor)" value="${desc}" class="cf-desc"/>
+            <button class="remove-field-btn" title="Remove">
+                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>`;
+        row.querySelector(".remove-field-btn").addEventListener("click", () => row.remove());
+        list.appendChild(row);
+    }
+
+    function getCustomFields() {
+        const fields = {};
+        document.querySelectorAll(".custom-field-row").forEach(row => {
+            const key = row.querySelector(".cf-key").value.trim().replace(/\s+/g, "_");
+            const desc = row.querySelector(".cf-desc").value.trim();
+            if (key) fields[key] = desc || key;
+        });
+        return fields;
+    }
+
+    /* ── FILE HANDLING ── */
+    function fmtSize(b) {
+        if (b < 1024) return b + " B";
+        if (b < 1024*1024) return (b/1024).toFixed(1) + " KB";
+        return (b/(1024*1024)).toFixed(2) + " MB";
+    }
+
+    function handleFile(file) {
+        const allowed = ["image/png","image/jpeg","image/webp","application/pdf"];
+        if (!allowed.includes(file.type) && !file.name.endsWith(".pdf")) {
+            showToast("Unsupported file type. Use PDF, PNG, JPG or WEBP.", "error"); return;
+        }
+        if (file.size > 20*1024*1024) { showToast("File too large — max 20 MB.", "error"); return; }
+
+        selectedFile = file;
+        const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+        const thumbWrap = document.getElementById("previewThumbWrap");
+
+        if (isPdf) {
+            thumbWrap.innerHTML = `<div class="preview-thumb pdf-thumb">PDF</div>`;
+        } else {
+            const url = URL.createObjectURL(file);
+            thumbWrap.innerHTML = `<img class="preview-thumb" src="${url}" alt="preview"/>`;
+        }
+
+        document.getElementById("previewName").textContent = file.name;
+        document.getElementById("previewSize").textContent = fmtSize(file.size);
+        document.getElementById("previewStrip").style.display = "flex";
+        document.getElementById("runBtn").style.display = "block";
+        document.getElementById("uploadTitle").textContent = "Ready — click Extract or change file";
+    }
+
+    document.getElementById("uploadInput").addEventListener("change", e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+    const uploadZone = document.getElementById("uploadZone");
+    uploadZone.addEventListener("dragover", e => { e.preventDefault(); uploadZone.classList.add("drag-over"); });
+    uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag-over"));
+    uploadZone.addEventListener("drop", e => {
+        e.preventDefault(); uploadZone.classList.remove("drag-over");
+        if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function resetUpload() {
+        selectedFile = null;
+        document.getElementById("uploadInput").value = "";
+        document.getElementById("previewStrip").style.display = "none";
+        document.getElementById("runBtn").style.display = "none";
+        document.getElementById("uploadTitle").textContent = "Drop document here or click to browse";
+        document.getElementById("previewThumbWrap").innerHTML = "";
+    }
+
+    document.getElementById("previewClear").addEventListener("click", resetUpload);
+
+    /* ── EXTRACT ── */
+    document.getElementById("runBtn").addEventListener("click", async () => {
+        if (!selectedFile) return;
+
+        if (currentSchema === "custom") {
+            const fields = getCustomFields();
+            if (Object.keys(fields).length === 0) {
+                showToast("Add at least one field before extracting.", "error"); return;
+            }
+        }
+
+        const runBtn = document.getElementById("runBtn");
+        runBtn.disabled = true;
+        runBtn.textContent = "Extracting…";
+
+        document.getElementById("uploadCard").style.display = "none";
+        document.getElementById("loadingCard").style.display = "block";
+        document.getElementById("resultsCard").style.display = "none";
+
+        const form = new FormData();
+        form.append("file", selectedFile);
+        form.append("schema", currentSchema);
+
+        if (currentSchema === "custom") {
+            form.append("custom_fields", JSON.stringify(getCustomFields()));
+        }
+
+        try {
+            const res = await fetch("/extract", { method: "POST", body: form });
+            const json = await res.json();
+
+            if (!res.ok || !json.success) {
+                throw new Error(json.error || "Extraction failed");
+            }
+
+            extractedData = json.data;
+            renderResults(extractedData);
+            addHistoryEntry(selectedFile ? selectedFile.name : "Unknown file", getCurrentSchemaLabel(), extractedData);
+
+            document.getElementById("loadingCard").style.display = "none";
+            document.getElementById("resultsCard").style.display = "block";
+            showToast("Data extracted successfully", "success");
+        } catch (err) {
+            document.getElementById("loadingCard").style.display = "none";
+            document.getElementById("uploadCard").style.display = "block";
+            showToast(err.message || "Extraction failed. Please try again.", "error");
+        } finally {
+            runBtn.disabled = false;
+            runBtn.textContent = "Extract data";
+        }
+    });
+
+    /* ── RENDER RESULTS ── */
+    function renderResults(data) {
+        const table = document.getElementById("fieldsTable");
+        table.innerHTML = "";
+
+        Object.entries(data).forEach(([key, value]) => {
+            const tr = document.createElement("tr");
+            const isNull = value === null || value === undefined || value === "";
+            const isComplex = typeof value === "object" && value !== null;
+
+            let displayVal;
+            if (isNull) {
+                displayVal = `<span class="field-value null-value">not found</span>`;
+            } else if (isComplex) {
+                displayVal = `<div class="field-value"><pre>${JSON.stringify(value, null, 2)}</pre></div>`;
+            } else {
+                displayVal = `<div class="field-value">${String(value)}</div>`;
+            }
+
+            tr.innerHTML = `<td class="field-key">${key}</td><td>${displayVal}</td>`;
+            table.appendChild(tr);
+        });
+    }
+
+    /* ── EXPORT ── */
+    async function exportData(format) {
+        if (!extractedData) return;
+        try {
+            const res = await fetch(`/export/${format}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(extractedData)
+            });
+            if (!res.ok) throw new Error("Export failed");
+            const blob = await res.blob();
+            downloadBlob(blob, blob.type || "application/octet-stream", `extracted_data.${format}`);
+            showToast(`Downloaded as ${format.toUpperCase()}`, "success");
+        } catch(e) { showToast("Export failed", "error"); }
+    }
+
+    document.getElementById("exportCsv").addEventListener("click", () => exportData("csv"));
+
+    function appendToExistingCsv(csvText) {
+        const rows = parseCsv(csvText);
+        const currentHeaders = extractedData ? Object.keys(extractedData) : [];
+        const existingHeaders = rows.length > 0 ? rows[0].map(h => String(h || "").trim()) : [];
+        const mergedHeaders = [...existingHeaders, ...currentHeaders.filter(h => !existingHeaders.includes(h))];
+
+        const existingRows = rows.slice(1).map(row => {
+            const record = {};
+            existingHeaders.forEach((header, idx) => {
+                record[header] = row[idx] ?? "";
+            });
+            return mergedHeaders.map(header => record[header] ?? "");
+        });
+
+        const currentRow = mergedHeaders.map(header => {
+            if (!extractedData || !(header in extractedData)) return "";
+            return valueToCell(extractedData[header]);
+        });
+
+        const mergedRows = [mergedHeaders, ...existingRows, currentRow];
+        const mergedCsv = rowsToCsv(mergedRows);
+        downloadBlob(mergedCsv, "text/csv;charset=utf-8", "extracted_data_appended.csv");
+        showToast("CSV appended and downloaded", "success");
+    }
+
+    const appendCsvBtn = document.getElementById("appendCsvBtn");
+    const appendCsvInput = document.getElementById("appendCsvInput");
+
+    appendCsvBtn.addEventListener("click", () => {
+        if (!extractedData) {
+            showToast("Extract data first", "error");
+            return;
+        }
+        appendCsvInput.value = "";
+        appendCsvInput.click();
+    });
+
+    appendCsvInput.addEventListener("change", e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        if (!file.name.toLowerCase().endsWith(".csv")) {
+            showToast("Please select a .csv file", "error");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                appendToExistingCsv(String(reader.result || ""));
+            } catch (err) {
+                showToast(err.message || "Failed to append CSV", "error");
+            }
+        };
+        reader.onerror = () => showToast("Failed to read selected CSV", "error");
+        reader.readAsText(file);
+    });
+
+    document.getElementById("historyTableBody").addEventListener("click", e => {
+        const btn = e.target.closest("button[data-action]");
+        if (!btn) return;
+
+        const idx = Number(btn.dataset.idx);
+        const action = btn.dataset.action;
+        const entry = sessionHistory[idx];
+        if (!entry) return;
+
+        if (action === "view") {
+            extractedData = structuredClone(entry.data);
+            renderResults(extractedData);
+            document.getElementById("loadingCard").style.display = "none";
+            document.getElementById("resultsCard").style.display = "block";
+            showToast("Loaded result from session history", "success");
+            return;
+        }
+
+        if (action === "json") {
+            const jsonStr = JSON.stringify(entry.data, null, 2);
+            downloadBlob(jsonStr, "application/json", `extracted_data_${idx + 1}.json`);
+            showToast("Downloaded history entry as JSON", "success");
+        }
+    });
+
+    /* ── CLEAR ── */
+    function fullClear() {
+        document.getElementById("uploadCard").style.display = "block";
+        document.getElementById("resultsCard").style.display = "none";
+        document.getElementById("loadingCard").style.display = "none";
+        extractedData = null;
+        resetUpload();
+    }
+
+    document.getElementById("clearResultsBtn").addEventListener("click", fullClear);
+    document.addEventListener("keydown", e => { if (e.key === "Escape") fullClear(); });
+</script>
+</body>
+</html>
