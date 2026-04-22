@@ -215,14 +215,16 @@
             display: none;
             border: 1.5px solid var(--border);
             border-radius: 10px;
-            overflow: auto;
+            overflow-x: auto;
+            overflow-y: auto;
+            width: 100%;
             max-height: 440px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 760px;
+            min-width: 100%;
         }
 
         th, td {
@@ -247,6 +249,23 @@
             letter-spacing: 0.2px;
             font-weight: 500;
         }
+
+        th:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 3;
+            border-right: 1.5px solid var(--border);
+        }
+
+        td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            background: #fff;
+            border-right: 1.5px solid var(--border);
+        }
+
+        tbody tr:nth-child(even) td:first-child { background: #fff; }
 
         tbody tr:nth-child(odd) { background: #ffffff; }
         tbody tr:nth-child(even) { background: #f7f8fa; }
@@ -273,6 +292,10 @@
             .chart-card.full { grid-column: auto; }
             .toolbar { flex-direction: column; align-items: stretch; }
             .search-input { max-width: none; }
+        }
+
+        @media (min-width: 768px) {
+            table { min-width: 1080px; }
         }
 
         @media (max-width: 560px) {
@@ -345,7 +368,7 @@
             <div class="chart-wrap"><canvas id="timeChart"></canvas></div>
         </div>
         <div class="chart-card full">
-            <div class="section-label">Spend By Category/Schema</div>
+            <div class="section-label">Spend By Payment Terms</div>
             <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
         </div>
     </div>
@@ -518,6 +541,12 @@
             || "";
     }
 
+    function detectPaymentTermsColumn(cols) {
+        return cols.find(c => c.toLowerCase().includes("payment"))
+            || cols.find(c => c.toLowerCase().includes("terms"))
+            || "";
+    }
+
     function parseCurrencyNumber(value) {
         const str = String(value || "").trim();
         if (!str) return 0;
@@ -667,16 +696,21 @@
         rows.forEach(row => {
             const dateObj = parseDateValue(dateColumn ? row[dateColumn] : "");
             if (!dateObj) return;
-            const key = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
+            const key = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
             grouped.set(key, (grouped.get(key) || 0) + parseCurrencyNumber(row[totalColumn]));
         });
 
         const points = Array.from(grouped.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+        const labels = points.map(x => {
+            const [yearStr, monthStr] = x[0].split("-");
+            const labelDate = new Date(Number(yearStr), Number(monthStr) - 1, 1);
+            return labelDate.toLocaleString("en", { month: "short", year: "numeric" });
+        });
 
         timeChartInstance = new Chart(document.getElementById("timeChart"), {
             type: "line",
             data: {
-                labels: points.map(x => x[0]),
+                labels,
                 datasets: [{
                     label: "Spend",
                     data: points.map(x => x[1]),
@@ -792,7 +826,7 @@
         const totalColumn = detectTotalColumn(headers);
         const vendorColumn = detectVendorColumn(headers);
         const dateColumn = detectDateColumn(headers);
-        const categoryColumn = detectCategoryColumn(headers);
+        const paymentTermsColumn = detectPaymentTermsColumn(headers) || detectCategoryColumn(headers);
 
         if (!totalColumn) {
             showInlineMessage("Could not detect a total amount column. Make sure your CSV includes a column like total_amount or total.");
@@ -807,7 +841,7 @@
 
         renderVendorChart(parsedRows, totalColumn, vendorColumn);
         renderTimeChart(parsedRows, totalColumn, dateColumn);
-        renderCategoryChart(parsedRows, totalColumn, categoryColumn);
+        renderCategoryChart(parsedRows, totalColumn, paymentTermsColumn);
         renderTable(filteredRows, headers);
     }
 
