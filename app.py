@@ -21,6 +21,11 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/analytics")
+def analytics():
+    return render_template("analytics.html")
+
+
 @app.route("/schemas")
 def schemas():
     return jsonify(list_schemas())

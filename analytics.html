@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocExtract - Analytics Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #ffffff;
+            --surface: #ffffff;
+            --surface-2: #f7f8fa;
+            --border: #d4d7dc;
+            --border-hover: #b0b5be;
+            --text: #0f1117;
+            --text-muted: #6b7280;
+            --text-dim: #c4c8ce;
+            --accent: #1a6ef5;
+            --radius: 10px;
+            --radius-lg: 14px;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 36px 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .wrap { max-width: 1100px; margin: 0 auto; }
+
+        header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 28px; padding-bottom: 24px;
+            border-bottom: 1.5px solid var(--border);
+        }
+
+        .logo { display: flex; align-items: center; gap: 10px; }
+
+        .logo-icon {
+            width: 32px; height: 32px; background: var(--accent);
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .logo-icon:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,110,245,0.28); }
+        .logo-icon svg { width: 17px; height: 17px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+        .logo-text { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+        .logo-text span { color: var(--accent); }
+
+        .badge {
+            font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted);
+            background: var(--surface-2); border: 1.5px solid var(--border);
+            padding: 4px 10px; border-radius: 6px; letter-spacing: 0.3px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            margin-bottom: 14px;
+        }
+
+        .section-label {
+            font-size: 11px; font-weight: 500; letter-spacing: 0.8px;
+            text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border); border-radius: 10px;
+            padding: 44px 20px; text-align: center; cursor: pointer;
+            transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+            background: var(--surface-2); position: relative;
+        }
+
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--accent); background: #eff4ff; transform: scale(1.005);
+        }
+
+        .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+        .upload-icon {
+            width: 44px; height: 44px; background: #fff; border: 1.5px solid var(--border);
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 14px;
+            transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.15s ease;
+        }
+
+        .upload-zone:hover .upload-icon, .upload-zone.drag-over .upload-icon { transform: translateY(-3px); border-color: #93b8fb; }
+        .upload-icon svg { width: 18px; height: 18px; stroke: var(--text-muted); fill: none; stroke-width: 1.5; transition: stroke 0.15s; }
+        .upload-zone:hover .upload-icon svg, .upload-zone.drag-over .upload-icon svg { stroke: var(--accent); }
+
+        .upload-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+        .upload-sub { font-size: 12px; color: var(--text-muted); }
+
+        .preview-strip {
+            display: none; align-items: center; justify-content: space-between;
+            gap: 14px; margin-top: 12px; padding: 12px 14px;
+            background: var(--surface-2);
+            border: 1.5px solid var(--border); border-radius: 10px;
+        }
+
+        .preview-name { font-size: 13px; font-weight: 500; }
+        .preview-meta { font-size: 12px; color: var(--text-muted); }
+
+        .inline-message {
+            display: none;
+            margin-bottom: 14px;
+            font-size: 13px;
+            color: var(--text-muted);
+            padding: 12px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            background: var(--surface-2);
+        }
+
+        .metrics-grid {
+            display: none;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .metric-card {
+            background: var(--surface-2);
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .charts-grid {
+            display: none;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .chart-card {
+            background: var(--surface);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            min-height: 330px;
+        }
+
+        .chart-card.full { grid-column: 1 / -1; }
+        .chart-wrap { position: relative; height: 260px; }
+
+        .toolbar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .search-input {
+            width: 100%;
+            max-width: 320px;
+            padding: 10px 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            background: var(--surface-2);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            outline: none;
+        }
+
+        .search-input:focus { border-color: var(--accent); }
+
+        .export-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px; font-family: 'DM Sans', sans-serif;
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            border-radius: 8px; border: 1.5px solid var(--border);
+            background: var(--surface-2); color: var(--text-muted);
+            transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s,
+                        border-color 0.15s, background 0.15s, color 0.15s;
+        }
+
+        .export-btn:hover {
+            border-color: var(--border-hover); background: #fff; color: var(--text);
+            transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+
+        .export-btn:active { transform: translateY(0) scale(0.97); }
+
+        .table-wrap {
+            display: none;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            overflow: auto;
+            max-height: 440px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 760px;
+        }
+
+        th, td {
+            border-bottom: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 12px;
+            white-space: nowrap;
+            max-width: 220px;
+        }
+
+        th:last-child, td:last-child { border-right: none; }
+
+        th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: var(--surface-2);
+            font-family: 'DM Mono', monospace;
+            color: var(--text-muted);
+            letter-spacing: 0.2px;
+            font-weight: 500;
+        }
+
+        tbody tr:nth-child(odd) { background: #ffffff; }
+        tbody tr:nth-child(even) { background: #f7f8fa; }
+
+        .toast-wrap {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; display: flex; flex-direction: column; align-items: center; gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: #1a1d23; color: #fff; font-size: 13px; font-weight: 500;
+            padding: 10px 18px; border-radius: 10px;
+            opacity: 0; transform: translateY(8px);
+            transition: opacity 0.22s ease, transform 0.22s ease;
+            pointer-events: none; display: flex; align-items: center; gap: 8px; max-width: 480px;
+        }
+
+        .toast.show { opacity: 1; transform: translateY(0); }
+
+        @media (max-width: 860px) {
+            .metrics-grid { grid-template-columns: 1fr; }
+            .charts-grid { grid-template-columns: 1fr; }
+            .chart-card.full { grid-column: auto; }
+            .toolbar { flex-direction: column; align-items: stretch; }
+            .search-input { max-width: none; }
+        }
+
+        @media (max-width: 560px) {
+            header { flex-direction: column; align-items: flex-start; gap: 10px; }
+            body { padding: 20px 16px; }
+        }
+    </style>
+</head>
+<body>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="wrap">
+    <header>
+        <div class="logo">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+            </div>
+            <span class="logo-text">Doc<span>Extract</span></span>
+        </div>
+        <a href="/" class="badge">Extractor</a>
+    </header>
+
+    <div class="card">
+        <div class="section-label">Analytics CSV Upload</div>
+        <div class="upload-zone" id="uploadZone">
+            <input type="file" id="uploadInput" accept=".csv,text/csv">
+            <div class="upload-icon">
+                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="upload-title" id="uploadTitle">Drop CSV here or click to browse</div>
+            <div class="upload-sub">CSV only · Parses extracted document data client-side</div>
+        </div>
+        <div class="preview-strip" id="previewStrip">
+            <div>
+                <div class="preview-name" id="previewName">-</div>
+                <div class="preview-meta" id="previewMeta">-</div>
+            </div>
+            <button class="export-btn" id="clearBtn">Clear</button>
+        </div>
+    </div>
+
+    <div class="inline-message" id="inlineMessage"></div>
+
+    <div class="metrics-grid" id="metricsGrid">
+        <div class="metric-card">
+            <div class="metric-label">Total Spend</div>
+            <div class="metric-value" id="metricTotal">0</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Number Of Documents</div>
+            <div class="metric-value" id="metricCount">0</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Top Vendor</div>
+            <div class="metric-value" id="metricVendor">-</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Average Per Document</div>
+            <div class="metric-value" id="metricAverage">0</div>
+        </div>
+    </div>
+
+    <div class="charts-grid" id="chartsGrid">
+        <div class="chart-card">
+            <div class="section-label">Spend By Vendor</div>
+            <div class="chart-wrap"><canvas id="vendorChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="section-label">Spend Over Time</div>
+            <div class="chart-wrap"><canvas id="timeChart"></canvas></div>
+        </div>
+        <div class="chart-card full">
+            <div class="section-label">Spend By Category/Schema</div>
+            <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="toolbar" id="tableToolbar">
+            <input class="search-input" id="searchInput" type="text" placeholder="Search across all columns...">
+            <button class="export-btn" id="downloadFilteredBtn">Download filtered CSV</button>
+        </div>
+        <div class="table-wrap" id="tableWrap">
+            <table>
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let parsedRows = [];
+    let filteredRows = [];
+    let headers = [];
+    let activeFileName = "";
+    let activeCurrency = "";
+
+    let vendorChartInstance = null;
+    let timeChartInstance = null;
+    let categoryChartInstance = null;
+
+    const colors = ['#1a6ef5','#0d9e6a','#b45309','#dc2626','#7c3aed'];
+
+    const toastWrap = document.getElementById("toastWrap");
+
+    function showToast(msg) {
+        const t = document.createElement("div");
+        t.className = "toast";
+        t.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" style="stroke:currentColor;fill:none;stroke-width:2"><polyline points="20 6 9 17 4 12"/></svg>${msg}`;
+        toastWrap.appendChild(t);
+        requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add("show")));
+        setTimeout(() => {
+            t.classList.remove("show");
+            setTimeout(() => t.remove(), 240);
+        }, 3200);
+    }
+
+    function csvEscape(value) {
+        const raw = value == null ? "" : String(value);
+        const escaped = raw.replace(/"/g, '""');
+        if (/[",\r\n]/.test(escaped)) return `"${escaped}"`;
+        return escaped;
+    }
+
+    function rowsToCsv(rows, cols) {
+        const out = [cols.map(csvEscape).join(",")];
+        rows.forEach(row => {
+            out.push(cols.map(h => csvEscape(row[h] ?? "")).join(","));
+        });
+        return out.join("\r\n");
+    }
+
+    function parseCsv(text) {
+        const rows = [];
+        let row = [];
+        let field = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            const next = text[i + 1];
+
+            if (inQuotes) {
+                if (ch === '"' && next === '"') {
+                    field += '"';
+                    i++;
+                } else if (ch === '"') {
+                    inQuotes = false;
+                } else {
+                    field += ch;
+                }
+                continue;
+            }
+
+            if (ch === '"') {
+                inQuotes = true;
+            } else if (ch === ',') {
+                row.push(field);
+                field = "";
+            } else if (ch === '\n') {
+                row.push(field.replace(/\r$/, ""));
+                rows.push(row);
+                row = [];
+                field = "";
+            } else {
+                field += ch;
+            }
+        }
+
+        if (field.length > 0 || row.length > 0) {
+            row.push(field.replace(/\r$/, ""));
+            rows.push(row);
+        }
+
+        return rows.filter(r => r.length > 1 || (r[0] && r[0].trim() !== ""));
+    }
+
+    function normalizeHeader(h, idx) {
+        const clean = String(h || "").trim();
+        return clean || `column_${idx + 1}`;
+    }
+
+    function detectFieldValueFormat(rawRows) {
+        if (!rawRows.length) return false;
+        const h0 = String(rawRows[0][0] || "").trim().toLowerCase();
+        const h1 = String(rawRows[0][1] || "").trim().toLowerCase();
+        return rawRows[0].length === 2 && h0 === "field" && h1 === "value";
+    }
+
+    function parseWideRows(rawRows) {
+        const localHeaders = rawRows[0].map(normalizeHeader);
+        const rows = rawRows.slice(1).map(raw => {
+            const obj = {};
+            localHeaders.forEach((h, idx) => {
+                obj[h] = raw[idx] ?? "";
+            });
+            return obj;
+        });
+        return { rows, headers: localHeaders };
+    }
+
+    function parseFieldValueRows(rawRows) {
+        const obj = {};
+        rawRows.slice(1).forEach(r => {
+            const k = String(r[0] || "").trim();
+            if (k) obj[k] = r[1] ?? "";
+        });
+        const localHeaders = Object.keys(obj);
+        return { rows: [obj], headers: localHeaders };
+    }
+
+    function detectTotalColumn(cols) {
+        const exactAmount = cols.find(c => c.toLowerCase() === "total_amount");
+        if (exactAmount) return exactAmount;
+        const exactTotal = cols.find(c => c.toLowerCase() === "total");
+        if (exactTotal) return exactTotal;
+        return cols.find(c => c.toLowerCase().includes("total")) || "";
+    }
+
+    function detectVendorColumn(cols) {
+        return cols.find(c => c.toLowerCase() === "vendor_name")
+            || cols.find(c => c.toLowerCase() === "store_name")
+            || cols.find(c => c.toLowerCase().includes("vendor"))
+            || cols.find(c => c.toLowerCase().includes("store"))
+            || "";
+    }
+
+    function detectDateColumn(cols) {
+        return cols.find(c => c.toLowerCase() === "invoice_date")
+            || cols.find(c => c.toLowerCase() === "date")
+            || cols.find(c => c.toLowerCase().includes("date"))
+            || "";
+    }
+
+    function detectCategoryColumn(cols) {
+        return cols.find(c => c.toLowerCase() === "schema")
+            || cols.find(c => c.toLowerCase() === "category")
+            || cols.find(c => c.toLowerCase() === "document_type")
+            || cols.find(c => c.toLowerCase().includes("schema"))
+            || cols.find(c => c.toLowerCase().includes("category"))
+            || cols.find(c => c.toLowerCase().includes("type"))
+            || "";
+    }
+
+    function parseCurrencyNumber(value) {
+        const str = String(value || "").trim();
+        if (!str) return 0;
+        const normalized = str.replace(/[^0-9.-]/g, "");
+        const num = parseFloat(normalized);
+        return Number.isFinite(num) ? num : 0;
+    }
+
+    function detectCurrencySymbol(rows, col) {
+        if (!col) return "";
+        const symbols = ["$", "EUR", "€", "GBP", "£", "INR", "₹"];
+        for (const row of rows) {
+            const val = String(row[col] || "");
+            for (const sym of symbols) {
+                if (val.includes(sym)) return sym;
+            }
+        }
+        return "";
+    }
+
+    function formatMoney(value, symbol) {
+        const opts = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+        if (symbol === "$") return `$${Number(value).toLocaleString(undefined, opts)}`;
+        if (symbol === "€" || symbol === "EUR") return `€${Number(value).toLocaleString(undefined, opts)}`;
+        if (symbol === "£" || symbol === "GBP") return `£${Number(value).toLocaleString(undefined, opts)}`;
+        if (symbol === "₹" || symbol === "INR") return `₹${Number(value).toLocaleString(undefined, opts)}`;
+        return Number(value).toLocaleString(undefined, opts);
+    }
+
+    function inferDocType(row) {
+        if (row.po_number) return "Purchase Order";
+        if (row.account_number || row.transactions || row.statement_period) return "Bank Statement";
+        if (row.invoice_number || row.due_date || row.bill_to) return "Invoice";
+        if (row.store_name || row.receipt_number || row.payment_method) return "Receipt";
+        return "Unknown";
+    }
+
+    function showInlineMessage(msg) {
+        const m = document.getElementById("inlineMessage");
+        m.textContent = msg;
+        m.style.display = "block";
+    }
+
+    function hideInlineMessage() {
+        document.getElementById("inlineMessage").style.display = "none";
+    }
+
+    function destroyCharts() {
+        [vendorChartInstance, timeChartInstance, categoryChartInstance].forEach(ch => {
+            if (ch) ch.destroy();
+        });
+        vendorChartInstance = null;
+        timeChartInstance = null;
+        categoryChartInstance = null;
+    }
+
+    function renderSummary(rows, totalColumn, vendorColumn) {
+        const sum = rows.reduce((acc, row) => acc + parseCurrencyNumber(row[totalColumn]), 0);
+        const count = rows.length;
+
+        const vendorCounts = new Map();
+        rows.forEach(row => {
+            const name = String((vendorColumn ? row[vendorColumn] : "") || "Unknown").trim() || "Unknown";
+            vendorCounts.set(name, (vendorCounts.get(name) || 0) + 1);
+        });
+
+        let topVendor = "Unknown";
+        let topVendorCount = -1;
+        vendorCounts.forEach((v, k) => {
+            if (v > topVendorCount) {
+                topVendorCount = v;
+                topVendor = k;
+            }
+        });
+
+        document.getElementById("metricTotal").textContent = formatMoney(sum, activeCurrency);
+        document.getElementById("metricCount").textContent = String(count);
+        document.getElementById("metricVendor").textContent = topVendor;
+        document.getElementById("metricAverage").textContent = formatMoney(count ? (sum / count) : 0, activeCurrency);
+        document.getElementById("metricsGrid").style.display = "grid";
+    }
+
+    function renderVendorChart(rows, totalColumn, vendorColumn) {
+        const grouped = new Map();
+        rows.forEach(row => {
+            const vendor = String((vendorColumn ? row[vendorColumn] : "") || "Unknown").trim() || "Unknown";
+            const amt = parseCurrencyNumber(row[totalColumn]);
+            grouped.set(vendor, (grouped.get(vendor) || 0) + amt);
+        });
+
+        const top = Array.from(grouped.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10);
+
+        vendorChartInstance = new Chart(document.getElementById("vendorChart"), {
+            type: "bar",
+            data: {
+                labels: top.map(x => x[0]),
+                datasets: [{
+                    label: "Spend",
+                    data: top.map(x => x[1]),
+                    backgroundColor: "rgba(26,110,245,0.8)",
+                    borderColor: "#1a6ef5",
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: "bottom", labels: { font: { family: "DM Sans" } } },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.dataset.label}: ${formatMoney(ctx.raw, activeCurrency)}`
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { color: "#f0f0f0" }, ticks: { font: { family: "DM Sans" } } },
+                    y: { grid: { display: false }, ticks: { font: { family: "DM Sans" } } }
+                }
+            }
+        });
+    }
+
+    function parseDateValue(value) {
+        const raw = String(value || "").trim();
+        if (!raw) return null;
+
+        const d = new Date(raw);
+        if (!Number.isNaN(d.getTime())) return d;
+
+        const m = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+        if (!m) return null;
+
+        const dd = Number(m[1]);
+        const mm = Number(m[2]) - 1;
+        const yyyy = Number(m[3].length === 2 ? `20${m[3]}` : m[3]);
+        const parsed = new Date(yyyy, mm, dd);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    function renderTimeChart(rows, totalColumn, dateColumn) {
+        const grouped = new Map();
+
+        rows.forEach(row => {
+            const dateObj = parseDateValue(dateColumn ? row[dateColumn] : "");
+            if (!dateObj) return;
+            const key = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
+            grouped.set(key, (grouped.get(key) || 0) + parseCurrencyNumber(row[totalColumn]));
+        });
+
+        const points = Array.from(grouped.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+        timeChartInstance = new Chart(document.getElementById("timeChart"), {
+            type: "line",
+            data: {
+                labels: points.map(x => x[0]),
+                datasets: [{
+                    label: "Spend",
+                    data: points.map(x => x[1]),
+                    borderColor: "#1a6ef5",
+                    backgroundColor: "rgba(26,110,245,0.1)",
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: "bottom", labels: { font: { family: "DM Sans" } } },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.dataset.label}: ${formatMoney(ctx.raw, activeCurrency)}`
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { family: "DM Sans" } } },
+                    y: { grid: { color: "#f0f0f0" }, ticks: { font: { family: "DM Sans" } } }
+                }
+            }
+        });
+    }
+
+    function renderCategoryChart(rows, totalColumn, categoryColumn) {
+        const grouped = new Map();
+
+        rows.forEach(row => {
+            const category = String((categoryColumn ? row[categoryColumn] : inferDocType(row)) || "Unknown").trim() || "Unknown";
+            grouped.set(category, (grouped.get(category) || 0) + parseCurrencyNumber(row[totalColumn]));
+        });
+
+        const items = Array.from(grouped.entries());
+
+        categoryChartInstance = new Chart(document.getElementById("categoryChart"), {
+            type: "doughnut",
+            data: {
+                labels: items.map(x => x[0]),
+                datasets: [{
+                    label: "Spend",
+                    data: items.map(x => x[1]),
+                    backgroundColor: items.map((_, i) => colors[i % colors.length]),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: "bottom", labels: { font: { family: "DM Sans" } } },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.label}: ${formatMoney(ctx.raw, activeCurrency)}`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderTable(rows, cols) {
+        const head = document.getElementById("tableHead");
+        const body = document.getElementById("tableBody");
+
+        head.innerHTML = `<tr>${cols.map(h => `<th>${h}</th>`).join("")}</tr>`;
+        body.innerHTML = rows.map(row => {
+            return `<tr>${cols.map(h => {
+                const raw = String(row[h] ?? "");
+                const short = raw.length > 40 ? `${raw.slice(0, 40)}...` : raw;
+                return `<td title="${raw.replace(/"/g, "&quot;")}">${short}</td>`;
+            }).join("")}</tr>`;
+        }).join("");
+
+        document.getElementById("tableWrap").style.display = "block";
+        document.getElementById("tableToolbar").style.display = "flex";
+    }
+
+    function applySearch() {
+        const q = document.getElementById("searchInput").value.trim().toLowerCase();
+        filteredRows = !q ? [...parsedRows] : parsedRows.filter(row => {
+            return headers.some(h => String(row[h] ?? "").toLowerCase().includes(q));
+        });
+        renderTable(filteredRows, headers);
+    }
+
+    function processData(dataRows, dataHeaders, filename) {
+        parsedRows = dataRows;
+        filteredRows = [...dataRows];
+        headers = dataHeaders;
+        activeFileName = filename;
+
+        document.getElementById("previewName").textContent = filename;
+        document.getElementById("previewMeta").textContent = `${parsedRows.length} rows parsed`;
+        document.getElementById("previewStrip").style.display = "flex";
+
+        hideInlineMessage();
+        document.getElementById("metricsGrid").style.display = "none";
+        document.getElementById("chartsGrid").style.display = "none";
+        destroyCharts();
+
+        if (parsedRows.length < 2) {
+            showInlineMessage("Upload a CSV with at least 2 extracted documents to see analytics.");
+            showToast("Upload a CSV with at least 2 extracted documents to see analytics.");
+            renderTable(filteredRows, headers);
+            return;
+        }
+
+        const totalColumn = detectTotalColumn(headers);
+        const vendorColumn = detectVendorColumn(headers);
+        const dateColumn = detectDateColumn(headers);
+        const categoryColumn = detectCategoryColumn(headers);
+
+        if (!totalColumn) {
+            showInlineMessage("Could not detect a total amount column. Make sure your CSV includes a column like total_amount or total.");
+            showToast("Could not detect a total amount column. Make sure your CSV includes a column like total_amount or total.");
+            renderTable(filteredRows, headers);
+            return;
+        }
+
+        activeCurrency = detectCurrencySymbol(parsedRows, totalColumn);
+        renderSummary(parsedRows, totalColumn, vendorColumn);
+        document.getElementById("chartsGrid").style.display = "grid";
+
+        renderVendorChart(parsedRows, totalColumn, vendorColumn);
+        renderTimeChart(parsedRows, totalColumn, dateColumn);
+        renderCategoryChart(parsedRows, totalColumn, categoryColumn);
+        renderTable(filteredRows, headers);
+    }
+
+    function handleCsvFile(file) {
+        if (!file.name.toLowerCase().endsWith(".csv")) {
+            showToast("Please upload a CSV file.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const rawRows = parseCsv(String(reader.result || ""));
+                if (!rawRows.length) {
+                    showToast("CSV is empty.");
+                    return;
+                }
+
+                const parsed = detectFieldValueFormat(rawRows)
+                    ? parseFieldValueRows(rawRows)
+                    : parseWideRows(rawRows);
+
+                processData(parsed.rows, parsed.headers, file.name);
+            } catch (e) {
+                showToast("Failed to parse CSV data.");
+            }
+        };
+        reader.onerror = () => showToast("Could not read the selected CSV file.");
+        reader.readAsText(file);
+    }
+
+    const uploadInput = document.getElementById("uploadInput");
+    const uploadZone = document.getElementById("uploadZone");
+
+    uploadInput.addEventListener("change", e => {
+        const f = e.target.files && e.target.files[0];
+        if (f) handleCsvFile(f);
+    });
+
+    uploadZone.addEventListener("dragover", e => { e.preventDefault(); uploadZone.classList.add("drag-over"); });
+    uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag-over"));
+    uploadZone.addEventListener("drop", e => {
+        e.preventDefault();
+        uploadZone.classList.remove("drag-over");
+        const f = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) handleCsvFile(f);
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+        parsedRows = [];
+        filteredRows = [];
+        headers = [];
+        activeFileName = "";
+        activeCurrency = "";
+
+        uploadInput.value = "";
+        document.getElementById("previewStrip").style.display = "none";
+        document.getElementById("metricsGrid").style.display = "none";
+        document.getElementById("chartsGrid").style.display = "none";
+        document.getElementById("tableWrap").style.display = "none";
+        document.getElementById("tableToolbar").style.display = "none";
+        document.getElementById("searchInput").value = "";
+        hideInlineMessage();
+        destroyCharts();
+    });
+
+    document.getElementById("searchInput").addEventListener("input", applySearch);
+
+    document.getElementById("downloadFilteredBtn").addEventListener("click", () => {
+        if (!headers.length || !filteredRows.length) {
+            showToast("No filtered rows to export.");
+            return;
+        }
+        const csv = rowsToCsv(filteredRows, headers);
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "filtered_analytics.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("Downloaded filtered CSV.");
+    });
+</script>
+</body>
+</html>
