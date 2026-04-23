@@ -174,6 +174,45 @@
             overflow: hidden; margin-bottom: 14px; background: var(--surface);
         }
 
+        .mode-toggle-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .mode-toggle-btn {
+            background: var(--surface-2);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1),
+            box-shadow 0.18s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+            outline: none;
+        }
+
+        .mode-toggle-btn:hover {
+            border-color: var(--border-hover);
+            background: #fff;
+            color: var(--text);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .mode-toggle-btn.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(26,110,245,0.12);
+        }
+
+        .mode-toggle-btn:active { transform: translateY(0) scale(0.98); }
+
         .upload-zone {
             border: 2px dashed var(--border); border-radius: 10px; margin: 8px;
             padding: 44px 20px; text-align: center; cursor: pointer;
@@ -234,6 +273,105 @@
         .preview-clear:hover { border-color: var(--red-border); background: var(--red-dim); transform: scale(1.08); }
         .preview-clear svg { width: 13px; height: 13px; stroke: var(--text-muted); fill: none; stroke-width: 1.8; transition: stroke 0.15s; }
         .preview-clear:hover svg { stroke: var(--red); }
+
+        .bulk-queue-wrap {
+            display: none;
+            margin: 0 8px 8px;
+            padding: 12px;
+            background: var(--surface-2);
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+        }
+
+        .bulk-progress-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .bulk-progress-track {
+            flex: 1;
+            height: 4px;
+            background: #dbe3f1;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .bulk-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            transition: width 0.2s ease;
+        }
+
+        .bulk-progress-text {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .bulk-queue-list {
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .bulk-queue-item {
+            display: grid;
+            grid-template-columns: 42px 1fr auto auto;
+            gap: 10px;
+            align-items: center;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+        }
+
+        .bulk-queue-item:last-child { border-bottom: none; }
+
+        .bulk-file-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bulk-file-size { color: var(--text-muted); }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            border: 1.5px solid var(--border);
+            font-size: 11px;
+            font-weight: 500;
+            background: var(--surface-2);
+            color: var(--text-muted);
+        }
+
+        .status-badge.pending { background: #f3f4f6; border-color: #d1d5db; color: #6b7280; }
+        .status-badge.extracting { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
+        .status-badge.done { background: var(--green-dim); border-color: var(--green-border); color: var(--green); }
+        .status-badge.failed { background: var(--red-dim); border-color: var(--red-border); color: var(--red); }
+
+        .tiny-spinner {
+            width: 10px;
+            height: 10px;
+            border: 2px solid rgba(26,110,245,0.25);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+
+        .bulk-actions {
+            display: none;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
 
         .run-btn {
             display: none; width: 100%; margin-top: 10px; padding: 13px 0;
@@ -471,6 +609,11 @@
     </div>
 
     <!-- UPLOAD -->
+    <div class="mode-toggle-row">
+        <button class="mode-toggle-btn active" id="singleModeBtn">Single document</button>
+        <button class="mode-toggle-btn" id="bulkModeBtn">Bulk upload</button>
+    </div>
+
     <div class="upload-card" id="uploadCard">
         <div class="upload-zone" id="uploadZone">
             <input type="file" id="uploadInput" accept="image/*,.pdf" />
@@ -494,6 +637,34 @@
 
         <div style="padding: 0 8px 8px;">
             <button class="run-btn" id="runBtn">Extract data</button>
+        </div>
+    </div>
+
+    <div class="upload-card" id="bulkUploadCard" style="display:none">
+        <div class="upload-zone" id="bulkUploadZone">
+            <input type="file" id="bulkUploadInput" accept="image/*,.pdf" multiple />
+            <div class="upload-icon">
+                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="upload-title" id="bulkUploadTitle">Drop multiple documents or click to browse</div>
+            <div class="upload-sub">PDF, PNG, JPG or WEBP · max 20 MB each</div>
+        </div>
+
+        <div class="bulk-queue-wrap" id="bulkQueueWrap">
+            <div class="bulk-progress-row">
+                <div class="bulk-progress-track"><div class="bulk-progress-fill" id="bulkProgressFill"></div></div>
+                <div class="bulk-progress-text" id="bulkProgressText">0 / 0 files processed</div>
+            </div>
+            <div class="bulk-queue-list" id="bulkQueueList"></div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+                <button class="run-btn" id="bulkRunBtn" style="display:block;max-width:220px">Start bulk extraction</button>
+                <button class="export-btn" id="bulkClearBtn">Clear queue</button>
+            </div>
+            <div class="bulk-actions" id="bulkActions">
+                <button class="export-btn" id="bulkExportCsvBtn">Download all as CSV</button>
+                <button class="export-btn" id="bulkExportJsonBtn">Download all as JSON</button>
+                <button class="export-btn" id="bulkAppendCsvBtn">Append to existing CSV</button>
+            </div>
         </div>
     </div>
 
@@ -560,8 +731,12 @@
 <script>
     /* ── STATE ── */
     let selectedFile = null;
+    let currentMode = "single";
     let currentSchema = "invoice";
     let extractedData = null;
+    let bulkFiles = [];
+    let bulkQueue = [];
+    let bulkResults = [];
     const sessionHistory = [];
     const MAX_HISTORY = 20;
     const SCHEMA_ICONS = {
@@ -610,6 +785,141 @@
 
     function rowsToCsv(rows) {
         return rows.map(row => row.map(csvEscape).join(",")).join("\r\n");
+    }
+
+    function updateModeUI() {
+        const singleBtn = document.getElementById("singleModeBtn");
+        const bulkBtn = document.getElementById("bulkModeBtn");
+        const singleCard = document.getElementById("uploadCard");
+        const bulkCard = document.getElementById("bulkUploadCard");
+
+        const isSingle = currentMode === "single";
+        singleBtn.classList.toggle("active", isSingle);
+        bulkBtn.classList.toggle("active", !isSingle);
+        singleCard.style.display = isSingle ? "block" : "none";
+        bulkCard.style.display = isSingle ? "none" : "block";
+    }
+
+    function setBulkStatus(index, status, errorMessage = "") {
+        if (!bulkQueue[index]) return;
+        bulkQueue[index].status = status;
+        bulkQueue[index].error = errorMessage;
+        renderBulkQueue();
+    }
+
+    function renderBulkQueue() {
+        const wrap = document.getElementById("bulkQueueWrap");
+        const list = document.getElementById("bulkQueueList");
+        const fill = document.getElementById("bulkProgressFill");
+        const txt = document.getElementById("bulkProgressText");
+        const actions = document.getElementById("bulkActions");
+
+        if (!bulkQueue.length) {
+            wrap.style.display = "none";
+            actions.style.display = "none";
+            return;
+        }
+
+        wrap.style.display = "block";
+
+        const completed = bulkQueue.filter(item => item.status === "done" || item.status === "failed").length;
+        const percent = bulkQueue.length ? (completed / bulkQueue.length) * 100 : 0;
+        fill.style.width = `${percent}%`;
+        txt.textContent = `${completed} / ${bulkQueue.length} files processed`;
+
+        list.innerHTML = bulkQueue.map((item, idx) => {
+            let label = "Pending";
+            let cls = "pending";
+            let prefix = "";
+
+            if (item.status === "extracting") {
+                label = "Extracting…";
+                cls = "extracting";
+                prefix = '<span class="tiny-spinner"></span>';
+            } else if (item.status === "done") {
+                label = "Done";
+                cls = "done";
+            } else if (item.status === "failed") {
+                label = "Failed";
+                cls = "failed";
+            }
+
+            return `
+                <div class="bulk-queue-item" title="${escapeHtml(item.error || "")}">
+                    <div>${idx + 1}.</div>
+                    <div class="bulk-file-name">${escapeHtml(item.file.name)}</div>
+                    <div class="bulk-file-size">${fmtSize(item.file.size)}</div>
+                    <div class="status-badge ${cls}">${prefix}${label}</div>
+                </div>
+            `;
+        }).join("");
+
+        const allFinished = bulkQueue.length > 0 && completed === bulkQueue.length;
+        actions.style.display = allFinished && bulkResults.length ? "flex" : "none";
+    }
+
+    function appendRowsToExistingCsv(csvText, existingFilename, newRowsData) {
+        const rows = parseCsv(csvText);
+
+        if (!rows.length) {
+            throw new Error("Selected CSV is empty");
+        }
+
+        const existingHeaders = rows[0].map(h => String(h || "").trim());
+        const allNewHeaders = Array.from(new Set(newRowsData.flatMap(r => Object.keys(r.data))));
+
+        const isFieldValueFormat =
+            existingHeaders.length === 2 &&
+            existingHeaders[0].toLowerCase() === "field" &&
+            existingHeaders[1].toLowerCase() === "value";
+
+        let mergedHeaders;
+        let mergedRows;
+
+        if (isFieldValueFormat) {
+            const existingObject = {};
+            rows.slice(1).forEach(row => {
+                const key = (row[0] || "").trim();
+                if (key) existingObject[key] = row[1] ?? "";
+            });
+
+            const dataHeaders = [...Object.keys(existingObject), ...allNewHeaders.filter(h => !(h in existingObject))];
+            mergedHeaders = ["source_file", ...dataHeaders];
+
+            const existingRow = mergedHeaders.map(header => {
+                if (header === "source_file") return existingFilename;
+                return existingObject[header] ?? "";
+            });
+
+            const appendedRows = newRowsData.map(rowData => mergedHeaders.map(header => {
+                if (header === "source_file") return rowData.filename || "current_extraction";
+                if (!(header in rowData.data)) return "";
+                return valueToCell(rowData.data[header]);
+            }));
+
+            mergedRows = [mergedHeaders, existingRow, ...appendedRows];
+        } else {
+            mergedHeaders = [...existingHeaders, ...allNewHeaders.filter(h => !existingHeaders.includes(h))];
+
+            const existingRows = rows.slice(1).map(row => {
+                const record = {};
+                existingHeaders.forEach((header, idx) => {
+                    record[header] = row[idx] ?? "";
+                });
+                return mergedHeaders.map(header => record[header] ?? "");
+            });
+
+            const appendedRows = newRowsData.map(rowData => mergedHeaders.map(header => {
+                if (!(header in rowData.data)) return "";
+                return valueToCell(rowData.data[header]);
+            }));
+
+            mergedRows = [mergedHeaders, ...existingRows, ...appendedRows];
+        }
+
+        const mergedCsv = rowsToCsv(mergedRows);
+        downloadBlob(mergedCsv, "text/csv;charset=utf-8", "extracted_data_appended.csv");
+        showToast("CSV appended and downloaded", "success");
     }
 
     function parseCsv(text) {
@@ -747,6 +1057,18 @@
 
     loadSchemas();
 
+    document.getElementById("singleModeBtn").addEventListener("click", () => {
+        currentMode = "single";
+        updateModeUI();
+    });
+
+    document.getElementById("bulkModeBtn").addEventListener("click", () => {
+        currentMode = "bulk";
+        updateModeUI();
+    });
+
+    updateModeUI();
+
     /* ── CUSTOM FIELDS ── */
     document.getElementById("addFieldBtn").addEventListener("click", addCustomField);
 
@@ -824,6 +1146,149 @@
         document.getElementById("uploadTitle").textContent = "Drop document here or click to browse";
         document.getElementById("previewThumbWrap").innerHTML = "";
     }
+
+    function setBulkFiles(files) {
+        const filtered = [];
+        files.forEach(file => {
+            const allowed = ["image/png","image/jpeg","image/webp","application/pdf"];
+            const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+            const isAllowed = allowed.includes(file.type) || isPdf;
+
+            if (!isAllowed) return;
+            if (file.size > 20*1024*1024) return;
+            filtered.push(file);
+        });
+
+        bulkFiles = filtered;
+        bulkResults = [];
+        bulkQueue = filtered.map(file => ({ file, status: "pending", error: "" }));
+
+        if (!filtered.length) {
+            showToast("No valid files selected. Use PDF, PNG, JPG or WEBP under 20 MB.", "error");
+        }
+
+        renderBulkQueue();
+    }
+
+    async function runBulkExtraction() {
+        if (!bulkQueue.length) {
+            showToast("Add files to the queue first.", "error");
+            return;
+        }
+
+        if (currentSchema === "custom") {
+            const fields = getCustomFields();
+            if (Object.keys(fields).length === 0) {
+                showToast("Add at least one field before extracting.", "error");
+                return;
+            }
+        }
+
+        const btn = document.getElementById("bulkRunBtn");
+        btn.disabled = true;
+        btn.textContent = "Processing…";
+
+        let ok = 0;
+        let failed = 0;
+
+        for (let i = 0; i < bulkQueue.length; i++) {
+            const item = bulkQueue[i];
+            setBulkStatus(i, "extracting");
+
+            const form = new FormData();
+            form.append("file", item.file);
+            form.append("schema", currentSchema);
+            if (currentSchema === "custom") {
+                form.append("custom_fields", JSON.stringify(getCustomFields()));
+            }
+
+            try {
+                const res = await fetch("/extract", { method: "POST", body: form });
+                const json = await res.json();
+                if (!res.ok || !json.success) {
+                    throw new Error(json.error || "Extraction failed");
+                }
+
+                bulkResults.push({ filename: item.file.name, schema: currentSchema, data: json.data });
+                setBulkStatus(i, "done");
+                ok++;
+            } catch (err) {
+                setBulkStatus(i, "failed", err.message || "Extraction failed");
+                failed++;
+            }
+        }
+
+        bulkResults.forEach(entry => {
+            addHistoryEntry(entry.filename, getCurrentSchemaLabel(), entry.data);
+        });
+
+        renderBulkQueue();
+        btn.disabled = false;
+        btn.textContent = "Start bulk extraction";
+        showToast(`${ok} extracted successfully, ${failed} failed`, ok ? "success" : "error");
+    }
+
+    document.getElementById("bulkUploadInput").addEventListener("change", e => {
+        const files = Array.from(e.target.files || []);
+        setBulkFiles(files);
+    });
+
+    const bulkUploadZone = document.getElementById("bulkUploadZone");
+    bulkUploadZone.addEventListener("dragover", e => { e.preventDefault(); bulkUploadZone.classList.add("drag-over"); });
+    bulkUploadZone.addEventListener("dragleave", () => bulkUploadZone.classList.remove("drag-over"));
+    bulkUploadZone.addEventListener("drop", e => {
+        e.preventDefault();
+        bulkUploadZone.classList.remove("drag-over");
+        const files = Array.from(e.dataTransfer.files || []);
+        setBulkFiles(files);
+    });
+
+    document.getElementById("bulkRunBtn").addEventListener("click", runBulkExtraction);
+
+    document.getElementById("bulkClearBtn").addEventListener("click", () => {
+        bulkFiles = [];
+        bulkQueue = [];
+        bulkResults = [];
+        document.getElementById("bulkUploadInput").value = "";
+        renderBulkQueue();
+    });
+
+    document.getElementById("bulkExportJsonBtn").addEventListener("click", () => {
+        if (!bulkResults.length) {
+            showToast("No successful results to export.", "error");
+            return;
+        }
+        downloadBlob(JSON.stringify(bulkResults, null, 2), "application/json", "bulk_extracted_data.json");
+        showToast("Downloaded all results as JSON", "success");
+    });
+
+    document.getElementById("bulkExportCsvBtn").addEventListener("click", () => {
+        if (!bulkResults.length) {
+            showToast("No successful results to export.", "error");
+            return;
+        }
+
+        const unionHeaders = Array.from(new Set(bulkResults.flatMap(item => Object.keys(item.data))));
+        const csvHeaders = ["source_file", ...unionHeaders];
+        const csvRows = bulkResults.map(item => csvHeaders.map(header => {
+            if (header === "source_file") return item.filename;
+            return header in item.data ? valueToCell(item.data[header]) : "";
+        }));
+
+        const csv = rowsToCsv([csvHeaders, ...csvRows]);
+        downloadBlob(csv, "text/csv;charset=utf-8", "bulk_extracted_data.csv");
+        showToast("Downloaded all results as CSV", "success");
+    });
+
+    document.getElementById("bulkAppendCsvBtn").addEventListener("click", () => {
+        if (!bulkResults.length) {
+            showToast("No successful results to append.", "error");
+            return;
+        }
+        appendCsvInput.value = "";
+        appendCsvInput.dataset.appendMode = "bulk";
+        appendCsvInput.click();
+    });
 
     document.getElementById("previewClear").addEventListener("click", resetUpload);
 
@@ -923,67 +1388,10 @@
     document.getElementById("exportCsv").addEventListener("click", () => exportData("csv"));
 
     function appendToExistingCsv(csvText, existingFilename) {
-        const rows = parseCsv(csvText);
-
-        if (!rows.length) {
-            throw new Error("Selected CSV is empty");
-        }
-
-        const existingHeaders = rows[0].map(h => String(h || "").trim());
-        const currentHeaders = extractedData ? Object.keys(extractedData) : [];
-
-        const isFieldValueFormat =
-            existingHeaders.length === 2 &&
-            existingHeaders[0].toLowerCase() === "field" &&
-            existingHeaders[1].toLowerCase() === "value";
-
-        let mergedHeaders;
-        let mergedRows;
-
-        if (isFieldValueFormat) {
-            const existingObject = {};
-            rows.slice(1).forEach(row => {
-                const key = (row[0] || "").trim();
-                if (key) existingObject[key] = row[1] ?? "";
-            });
-
-            const dataHeaders = [...Object.keys(existingObject), ...currentHeaders.filter(h => !(h in existingObject))];
-            mergedHeaders = ["source_file", ...dataHeaders];
-
-            const existingRow = mergedHeaders.map(header => {
-                if (header === "source_file") return existingFilename;
-                return existingObject[header] ?? "";
-            });
-
-            const currentRow = mergedHeaders.map(header => {
-                if (header === "source_file") return selectedFile ? selectedFile.name : "current_extraction";
-                if (!extractedData || !(header in extractedData)) return "";
-                return valueToCell(extractedData[header]);
-            });
-
-            mergedRows = [mergedHeaders, existingRow, currentRow];
-        } else {
-            mergedHeaders = [...existingHeaders, ...currentHeaders.filter(h => !existingHeaders.includes(h))];
-
-            const existingRows = rows.slice(1).map(row => {
-                const record = {};
-                existingHeaders.forEach((header, idx) => {
-                    record[header] = row[idx] ?? "";
-                });
-                return mergedHeaders.map(header => record[header] ?? "");
-            });
-
-            const currentRow = mergedHeaders.map(header => {
-                if (!extractedData || !(header in extractedData)) return "";
-                return valueToCell(extractedData[header]);
-            });
-
-            mergedRows = [mergedHeaders, ...existingRows, currentRow];
-        }
-
-        const mergedCsv = rowsToCsv(mergedRows);
-        downloadBlob(mergedCsv, "text/csv;charset=utf-8", "extracted_data_appended.csv");
-        showToast("CSV appended and downloaded", "success");
+        const singleRows = extractedData
+            ? [{ filename: selectedFile ? selectedFile.name : "current_extraction", data: extractedData }]
+            : [];
+        appendRowsToExistingCsv(csvText, existingFilename, singleRows);
     }
 
     const appendCsvBtn = document.getElementById("appendCsvBtn");
@@ -994,6 +1402,7 @@
             showToast("Extract data first", "error");
             return;
         }
+        appendCsvInput.dataset.appendMode = "";
         appendCsvInput.value = "";
         appendCsvInput.click();
     });
@@ -1010,9 +1419,15 @@
         const reader = new FileReader();
         reader.onload = () => {
             try {
-                appendToExistingCsv(String(reader.result || ""), file.name);
+                if (appendCsvInput.dataset.appendMode === "bulk") {
+                    appendRowsToExistingCsv(String(reader.result || ""), file.name, bulkResults);
+                    appendCsvInput.dataset.appendMode = "";
+                } else {
+                    appendToExistingCsv(String(reader.result || ""), file.name);
+                }
             } catch (err) {
                 showToast(err.message || "Failed to append CSV", "error");
+                appendCsvInput.dataset.appendMode = "";
             }
         };
         reader.onerror = () => showToast("Failed to read selected CSV", "error");
