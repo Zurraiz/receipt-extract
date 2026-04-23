@@ -3,238 +3,652 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocExtract - Analytics Dashboard</title>
+    <title>DocExtract — Analytics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --bg: #ffffff;
-            --surface: #ffffff;
-            --surface-2: #f7f8fa;
-            --border: #d4d7dc;
-            --border-hover: #b0b5be;
-            --text: #0f1117;
-            --text-muted: #6b7280;
-            --text-dim: #c4c8ce;
-            --accent: #1a6ef5;
-            --radius: 10px;
-            --radius-lg: 14px;
+            --ink: #0b0c0d;
+            --ink-2: #141518;
+            --ink-3: #1c1e22;
+            --ink-4: #24272c;
+            --line: #2a2d33;
+            --line-2: #363a41;
+
+            --cream: #f4f0e8;
+            --cream-2: #ebe6db;
+            --cream-3: #dcd6c8;
+            --bone: #fbf8f2;
+
+            --text: #f4f0e8;
+            --text-2: #c8c4bb;
+            --text-3: #8a8a8a;
+            --text-4: #5a5d63;
+
+            --ink-on-cream: #0b0c0d;
+            --muted-on-cream: #5a5751;
+            --dim-on-cream: #8a857b;
+
+            --volt: #d4ff3a;
+            --volt-dim: #a8cc2e;
+            --volt-soft: rgba(212,255,58,0.12);
+
+            --green: #5be29b;
+            --red: #ff6b6b;
+            --amber: #ffb547;
+            --blue: #7cb7ff;
+            --violet: #b79dff;
+
+            --radius: 4px;
+            --radius-lg: 8px;
         }
+
+        html, body { background: var(--ink); }
 
         body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--bg);
+            font-family: 'Inter', -apple-system, sans-serif;
             color: var(--text);
             min-height: 100vh;
-            padding: 36px 20px;
             -webkit-font-smoothing: antialiased;
+            font-feature-settings: "ss01", "cv11";
+            line-height: 1.45;
+            overflow-x: hidden;
         }
 
-        .wrap { max-width: 1100px; margin: 0 auto; }
+        body::before {
+            content: "";
+            position: fixed; inset: 0;
+            pointer-events: none;
+            opacity: 0.035;
+            z-index: 1;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+        }
 
-        header {
+        .tabular { font-variant-numeric: tabular-nums; }
+
+        /* ── LAYOUT ── */
+        .shell {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            min-height: 100vh;
+            position: relative;
+            z-index: 2;
+        }
+
+        .rail {
+            border-right: 1px solid var(--line);
+            padding: 28px 24px;
+            position: sticky; top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .brand { display: flex; align-items: center; gap: 10px; }
+
+        .brand-mark {
+            width: 30px; height: 30px; border-radius: 6px;
+            background: var(--volt);
+            color: var(--ink);
+            display: grid; place-items: center;
+            font-family: 'Instrument Serif', serif;
+            font-size: 20px; font-style: italic;
+            line-height: 1;
+            box-shadow: 0 0 24px rgba(212,255,58,0.25);
+        }
+
+        .brand-name {
+            font-family: 'Instrument Serif', serif;
+            font-size: 22px;
+            letter-spacing: -0.02em;
+            line-height: 1;
+        }
+        .brand-name em { font-style: italic; color: var(--volt); }
+
+        .rail-meta {
+            display: flex; align-items: center; gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            padding-top: 4px;
+        }
+
+        .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--volt); position: relative; flex-shrink: 0; }
+        .pulse::after {
+            content: ""; position: absolute; inset: -3px;
+            border-radius: 50%;
+            background: var(--volt);
+            opacity: 0.5;
+            animation: pulse 1.8s ease-out infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.4); opacity: 0; } }
+
+        .rail-section-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .rail-section-label::before { content: ""; display: block; width: 16px; height: 1px; background: var(--line-2); }
+
+        .nav-list { display: flex; flex-direction: column; gap: 2px; }
+        .nav-link {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px;
+            border-radius: var(--radius);
+            color: var(--text-2);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+        }
+        .nav-link:hover { color: var(--text); background: var(--ink-2); }
+        .nav-link.active {
+            color: var(--ink);
+            background: var(--volt);
+            border-color: var(--volt);
+        }
+        .nav-link.active .num { opacity: 0.5; color: var(--ink); }
+        .nav-link .num {
+            margin-left: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            opacity: 0.6;
+        }
+        .nav-link svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.6; flex-shrink: 0; }
+
+        .rail-legend { display: flex; flex-direction: column; gap: 10px; }
+        .legend-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-2); }
+        .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+        .legend-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
+
+        .rail-footer {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--line);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-4);
+            line-height: 1.6;
+        }
+        .rail-footer a { color: var(--text-3); text-decoration: none; }
+        .rail-footer a:hover { color: var(--volt); }
+
+        /* ── MAIN ── */
+        .main { min-width: 0; }
+
+        .main-header {
+            padding: 28px 48px 24px;
+            border-bottom: 1px solid var(--line);
+            display: flex; align-items: flex-end; justify-content: space-between;
+            gap: 24px;
+            background: var(--ink);
+            position: sticky; top: 0; z-index: 10;
+            backdrop-filter: blur(6px);
+        }
+
+        .eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--text-3);
+            margin-bottom: 8px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .eyebrow-slash { color: var(--text-3); }
+
+        h1.display {
+            font-family: 'Instrument Serif', serif;
+            font-size: 44px;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            font-weight: 400;
+        }
+        h1.display em { font-style: italic; color: var(--text-3); }
+
+        .header-right {
+            display: flex; align-items: center; gap: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-3);
+        }
+        .header-right .dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; box-shadow: 0 0 8px var(--green); }
+
+        .main-body { padding: 36px 48px 80px; display: flex; flex-direction: column; gap: 28px; max-width: 1200px; }
+
+        /* ── PANELS ── */
+        .panel {
+            background: var(--cream);
+            color: var(--ink-on-cream);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .panel-dark {
+            background: var(--ink-2);
+            border: 1px solid var(--line);
+            color: var(--text);
+            border-radius: var(--radius-lg);
+        }
+
+        .panel-head {
             display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 28px; padding-bottom: 24px;
-            border-bottom: 1.5px solid var(--border);
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--cream-3);
+            gap: 16px;
+            flex-wrap: wrap;
         }
+        .panel-dark .panel-head { border-bottom-color: var(--line); }
 
-        .logo { display: flex; align-items: center; gap: 10px; }
-
-        .logo-icon {
-            width: 32px; height: 32px; background: var(--accent);
-            border-radius: 8px; display: flex; align-items: center; justify-content: center;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        .panel-title {
+            font-family: 'Instrument Serif', serif;
+            font-size: 24px;
+            letter-spacing: -0.01em;
+            line-height: 1;
         }
-        .logo-icon:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,110,245,0.28); }
-        .logo-icon svg { width: 17px; height: 17px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .panel-kicker {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--muted-on-cream);
+            margin-bottom: 6px;
+        }
+        .panel-dark .panel-kicker { color: var(--text-3); }
 
-        .logo-text { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
-        .logo-text span { color: var(--accent); }
+        .panel-body { padding: 28px; }
 
         .badge {
-            font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted);
-            background: var(--surface-2); border: 1.5px solid var(--border);
-            padding: 4px 10px; border-radius: 6px; letter-spacing: 0.3px;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--muted-on-cream);
+            background: var(--bone);
+            border: 1px solid var(--cream-3);
+            padding: 4px 10px;
+            border-radius: 3px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        .panel-dark .badge {
+            color: var(--text-3);
+            background: var(--ink-3);
+            border-color: var(--line);
         }
 
-        .card {
-            background: var(--surface);
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 20px 24px;
-            margin-bottom: 14px;
-        }
-
-        .section-label {
-            font-size: 11px; font-weight: 500; letter-spacing: 0.8px;
-            text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;
-        }
-
+        /* ── UPLOAD ── */
         .upload-zone {
-            border: 2px dashed var(--border); border-radius: 10px;
-            padding: 44px 20px; text-align: center; cursor: pointer;
-            transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
-            background: var(--surface-2); position: relative;
+            border: 1px dashed var(--cream-3);
+            border-radius: var(--radius-lg);
+            padding: 56px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--bone);
+            position: relative;
+            overflow: hidden;
         }
+
+        .upload-zone::before {
+            content: ""; position: absolute;
+            top: 0; left: -100%;
+            width: 40%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(212,255,58,0.15), transparent);
+        }
+
+        .upload-zone:hover::before, .upload-zone.drag-over::before {
+            animation: sweep 1.2s ease-in-out;
+        }
+        @keyframes sweep { from { left: -100%; } to { left: 100%; } }
 
         .upload-zone:hover, .upload-zone.drag-over {
-            border-color: var(--accent); background: #eff4ff; transform: scale(1.005);
+            border-color: var(--ink-on-cream);
+            background: #fff;
         }
+        .upload-zone.drag-over { border-style: solid; }
 
         .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 
         .upload-icon {
-            width: 44px; height: 44px; background: #fff; border: 1.5px solid var(--border);
-            border-radius: 10px; display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 14px;
-            transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.15s ease;
+            width: 56px; height: 56px;
+            background: var(--ink);
+            color: var(--volt);
+            border-radius: 12px;
+            display: grid; place-items: center;
+            margin: 0 auto 18px;
+            transition: transform 0.2s ease;
+            box-shadow: 0 8px 24px rgba(11,12,13,0.15);
         }
+        .upload-zone:hover .upload-icon { transform: translateY(-3px) rotate(-4deg); }
+        .upload-icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
-        .upload-zone:hover .upload-icon, .upload-zone.drag-over .upload-icon { transform: translateY(-3px); border-color: #93b8fb; }
-        .upload-icon svg { width: 18px; height: 18px; stroke: var(--text-muted); fill: none; stroke-width: 1.5; transition: stroke 0.15s; }
-        .upload-zone:hover .upload-icon svg, .upload-zone.drag-over .upload-icon svg { stroke: var(--accent); }
-
-        .upload-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
-        .upload-sub { font-size: 12px; color: var(--text-muted); }
+        .upload-title {
+            font-family: 'Instrument Serif', serif;
+            font-size: 26px;
+            color: var(--ink-on-cream);
+            margin-bottom: 6px;
+            letter-spacing: -0.01em;
+        }
+        .upload-title em { font-style: italic; color: var(--muted-on-cream); }
+        .upload-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--muted-on-cream);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
 
         .preview-strip {
-            display: none; align-items: center; justify-content: space-between;
-            gap: 14px; margin-top: 12px; padding: 12px 14px;
-            background: var(--surface-2);
-            border: 1.5px solid var(--border); border-radius: 10px;
+            display: none;
+            align-items: center; justify-content: space-between;
+            gap: 14px;
+            margin-top: 14px;
+            padding: 14px 20px;
+            background: var(--ink);
+            color: var(--cream);
+            border-radius: var(--radius-lg);
         }
 
+        .preview-left { display: flex; align-items: center; gap: 14px; }
+        .preview-icon {
+            width: 42px; height: 42px;
+            background: var(--volt);
+            color: var(--ink);
+            border-radius: 6px;
+            display: grid; place-items: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+        }
         .preview-name { font-size: 13px; font-weight: 500; }
-        .preview-meta { font-size: 12px; color: var(--text-muted); }
+        .preview-meta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-top: 3px;
+        }
 
+        /* ── INLINE MESSAGE ── */
         .inline-message {
             display: none;
-            margin-bottom: 14px;
             font-size: 13px;
-            color: var(--text-muted);
-            padding: 12px 14px;
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
-            background: var(--surface-2);
+            color: var(--text-2);
+            padding: 16px 20px;
+            border: 1px solid var(--line);
+            border-left: 2px solid var(--amber);
+            border-radius: var(--radius);
+            background: var(--ink-2);
+            font-family: 'Inter', sans-serif;
+        }
+        .inline-message::before {
+            content: "⚠";
+            color: var(--amber);
+            margin-right: 10px;
+            font-size: 14px;
         }
 
+        /* ── METRICS GRID — Bloomberg ticker row ── */
         .metrics-grid {
             display: none;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-            margin-bottom: 14px;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            background: var(--ink-2);
+            overflow: hidden;
         }
 
         .metric-card {
-            background: var(--surface-2);
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
-            padding: 20px;
+            padding: 22px 24px;
+            border-right: 1px solid var(--line);
+            position: relative;
+            overflow: hidden;
         }
+        .metric-card:last-child { border-right: none; }
+
+        .metric-card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0;
+            width: 24px; height: 1px;
+            background: var(--line-2);
+        }
+        .metric-card:first-child::before { background: var(--volt); width: 56px; height: 2px; }
 
         .metric-label {
-            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: var(--text-muted);
-            margin-bottom: 8px;
+            letter-spacing: 0.14em;
+            color: var(--text-3);
+            margin-bottom: 20px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .metric-label .tick {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-4);
         }
 
         .metric-value {
-            font-size: 24px;
-            font-weight: 500;
+            font-family: 'Instrument Serif', serif;
+            font-style: italic;
+            font-size: 64px;
+            font-weight: 400;
             color: var(--text);
+            line-height: 0.95;
+            letter-spacing: -0.03em;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .metric-card:first-child .metric-value { color: var(--volt); }
+
+        .metric-value.mono-val {
+            font-family: 'Instrument Serif', serif;
+            font-style: italic;
+            font-size: 64px;
+            font-weight: 400;
+            letter-spacing: -0.03em;
         }
 
+        .metric-delta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            margin-top: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .metric-card { padding: 28px 24px 24px; }
+
+        /* ── CHARTS ── */
         .charts-grid {
             display: none;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-            margin-bottom: 14px;
+            gap: 16px;
         }
 
         .chart-card {
-            background: var(--surface);
-            border: 1.5px solid var(--border);
+            background: var(--ink-2);
+            border: 1px solid var(--line);
             border-radius: var(--radius-lg);
-            padding: 16px;
-            min-height: 330px;
+            padding: 22px 24px;
+            color: var(--text);
+            min-height: 340px;
+            display: flex;
+            flex-direction: column;
         }
 
         .chart-card.full { grid-column: 1 / -1; }
-        .chart-wrap { position: relative; height: 260px; }
+        .chart-card.dark {
+            background: var(--ink-2);
+            border: 1px solid var(--line);
+            color: var(--text);
+        }
 
+        .chart-head {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            margin-bottom: 16px;
+            gap: 12px;
+        }
+
+        .chart-title {
+            font-family: 'Instrument Serif', serif;
+            font-size: 20px;
+            letter-spacing: -0.01em;
+            line-height: 1.1;
+        }
+        .chart-kicker {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-bottom: 6px;
+        }
+        .chart-card.dark .chart-kicker { color: var(--text-3); }
+
+        .chart-wrap { position: relative; flex: 1; min-height: 260px; }
+
+        /* ── TOOLBAR ── */
         .toolbar {
             display: none;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 16px;
+            margin-bottom: 16px;
+            padding: 14px 20px;
+            background: var(--ink-2);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            flex-wrap: wrap;
+        }
+
+        .search-wrap { position: relative; flex: 1; max-width: 360px; }
+        .search-wrap svg {
+            position: absolute;
+            left: 12px; top: 50%;
+            transform: translateY(-50%);
+            width: 13px; height: 13px;
+            stroke: var(--text-3);
+            fill: none;
+            stroke-width: 1.8;
+            pointer-events: none;
         }
 
         .search-input {
             width: 100%;
-            max-width: 320px;
-            padding: 10px 12px;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 13px;
-            background: var(--surface-2);
-            border: 1.5px solid var(--border);
-            border-radius: 8px;
+            padding: 10px 14px 10px 34px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            background: var(--ink);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             color: var(--text);
             outline: none;
+            letter-spacing: 0.02em;
+            transition: border-color 0.15s;
         }
+        .search-input::placeholder { color: var(--text-4); }
+        .search-input:focus { border-color: var(--volt); }
 
-        .search-input:focus { border-color: var(--accent); }
+        .toolbar-right {
+            display: flex; align-items: center; gap: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
 
         .export-btn {
             display: inline-flex; align-items: center; gap: 6px;
-            padding: 8px 14px; font-family: 'DM Sans', sans-serif;
-            font-size: 12px; font-weight: 500; cursor: pointer;
-            border-radius: 8px; border: 1.5px solid var(--border);
-            background: var(--surface-2); color: var(--text-muted);
-            transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s,
-                        border-color 0.15s, background 0.15s, color 0.15s;
+            padding: 8px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            border-radius: var(--radius);
+            border: 1px solid var(--line-2);
+            background: transparent;
+            color: var(--text-2);
+            transition: all 0.15s;
         }
-
         .export-btn:hover {
-            border-color: var(--border-hover); background: #fff; color: var(--text);
-            transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+            background: var(--volt);
+            color: var(--ink);
+            border-color: var(--volt);
+        }
+        .export-btn svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+
+        .export-btn.light {
+            border-color: var(--cream-3);
+            color: var(--ink-on-cream);
+        }
+        .export-btn.light:hover {
+            background: var(--ink);
+            color: var(--cream);
+            border-color: var(--ink);
         }
 
-        .export-btn:active { transform: translateY(0) scale(0.97); }
+        /* ── TABLE ── */
+        .table-panel {
+            display: none;
+            background: var(--cream);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .table-head-bar {
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--cream-3);
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
 
         .table-wrap {
-            display: none;
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
             overflow-x: auto;
             overflow-y: auto;
-            width: 100%;
-            max-height: 440px;
+            max-height: 480px;
         }
+        .table-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+        .table-wrap::-webkit-scrollbar-thumb { background: var(--cream-3); border-radius: 4px; }
+        .table-wrap::-webkit-scrollbar-track { background: var(--bone); }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 100%;
         }
 
         th, td {
-            border-bottom: 1px solid var(--border);
-            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--cream-3);
+            border-right: 1px solid var(--cream-3);
             text-align: left;
-            padding: 10px 12px;
+            padding: 10px 16px;
             font-size: 12px;
             white-space: nowrap;
-            max-width: 220px;
+            max-width: 240px;
+            color: var(--ink-on-cream);
+            font-variant-numeric: tabular-nums;
         }
 
         th:last-child, td:last-child { border-right: none; }
@@ -242,149 +656,373 @@
         th {
             position: sticky;
             top: 0;
-            z-index: 1;
-            background: var(--surface-2);
-            font-family: 'DM Mono', monospace;
-            color: var(--text-muted);
-            letter-spacing: 0.2px;
+            z-index: 2;
+            background: var(--bone);
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--muted-on-cream);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
             font-weight: 500;
+            font-size: 10px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--cream-3);
         }
 
         th:first-child {
             position: sticky;
             left: 0;
             z-index: 3;
-            border-right: 1.5px solid var(--border);
+            border-right: 1px solid var(--cream-3);
         }
 
         td:first-child {
             position: sticky;
             left: 0;
             z-index: 1;
-            background: #fff;
-            border-right: 1.5px solid var(--border);
+            background: var(--cream);
+            border-right: 1px solid var(--cream-3);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--muted-on-cream);
         }
 
-        tbody tr:nth-child(even) td:first-child { background: #fff; }
+        tbody tr { transition: background 0.1s; }
+        tbody tr:hover { background: var(--cream-2); }
+        tbody tr:hover td:first-child { background: var(--cream-2); }
 
-        tbody tr:nth-child(odd) { background: #ffffff; }
-        tbody tr:nth-child(even) { background: #f7f8fa; }
+        tbody tr:nth-child(even) { background: var(--bone); }
+        tbody tr:nth-child(even) td:first-child { background: var(--bone); }
+        tbody tr:nth-child(even):hover,
+        tbody tr:nth-child(even):hover td:first-child { background: var(--cream-2); }
 
+        /* ── EMPTY STATE ── */
+        .empty-hero {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+            padding: 48px 28px;
+            background: var(--cream);
+            border-radius: var(--radius-lg);
+            color: var(--ink-on-cream);
+        }
+        .empty-hero-big {
+            font-family: 'Instrument Serif', serif;
+            font-size: 40px;
+            line-height: 1.05;
+            letter-spacing: -0.02em;
+            max-width: 18ch;
+        }
+        .empty-hero-big em { font-style: italic; color: var(--muted-on-cream); }
+        .empty-hero-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--muted-on-cream);
+        }
+        .empty-steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .empty-step {
+            border-top: 1px solid var(--cream-3);
+            padding-top: 14px;
+        }
+        .empty-step-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--dim-on-cream);
+            letter-spacing: 0.14em;
+            margin-bottom: 6px;
+        }
+        .empty-step-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--ink-on-cream);
+            margin-bottom: 4px;
+        }
+        .empty-step-desc {
+            font-size: 12px;
+            color: var(--muted-on-cream);
+            line-height: 1.5;
+        }
+
+        /* ── TOAST ── */
         .toast-wrap {
-            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; display: flex; flex-direction: column; align-items: center; gap: 8px;
+            position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+            z-index: 1000;
+            display: flex; flex-direction: column-reverse; align-items: center; gap: 8px;
             pointer-events: none;
         }
-
         .toast {
-            background: #1a1d23; color: #fff; font-size: 13px; font-weight: 500;
-            padding: 10px 18px; border-radius: 10px;
-            opacity: 0; transform: translateY(8px);
-            transition: opacity 0.22s ease, transform 0.22s ease;
-            pointer-events: none; display: flex; align-items: center; gap: 8px; max-width: 480px;
+            background: var(--ink-2);
+            border: 1px solid var(--line-2);
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 500;
+            padding: 12px 18px;
+            border-radius: var(--radius);
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 0.22s, transform 0.22s;
+            display: flex; align-items: center; gap: 10px;
+            max-width: 420px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
-
         .toast.show { opacity: 1; transform: translateY(0); }
+        .toast svg { width: 14px; height: 14px; stroke: var(--volt); fill: none; stroke-width: 2; flex-shrink: 0; }
 
-        @media (max-width: 860px) {
-            .metrics-grid { grid-template-columns: 1fr; }
+        /* ── RESPONSIVE ── */
+        @media (max-width: 960px) {
+            .shell { grid-template-columns: 1fr; }
+            .rail {
+                position: static;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+                padding: 20px 24px;
+                flex-direction: row;
+                gap: 16px;
+                align-items: center;
+                overflow-x: auto;
+            }
+            .rail-section-wrap, .rail-footer, .rail-legend-wrap { display: none; }
+            .main-header { padding: 24px 24px 20px; }
+            .main-body { padding: 24px; }
+            h1.display { font-size: 32px; }
+            .metrics-grid { grid-template-columns: 1fr 1fr; }
+            .metric-card:nth-child(2) { border-right: none; }
+            .metric-card:nth-child(1), .metric-card:nth-child(2) { border-bottom: 1px solid var(--line); }
             .charts-grid { grid-template-columns: 1fr; }
             .chart-card.full { grid-column: auto; }
-            .toolbar { flex-direction: column; align-items: stretch; }
-            .search-input { max-width: none; }
         }
 
-        @media (min-width: 768px) {
-            table { min-width: 1080px; }
-        }
-
-        @media (max-width: 560px) {
-            header { flex-direction: column; align-items: flex-start; gap: 10px; }
-            body { padding: 20px 16px; }
+        @media (max-width: 640px) {
+            .metrics-grid { grid-template-columns: 1fr; }
+            .metric-card { border-right: none; border-bottom: 1px solid var(--line); }
+            .metric-card:last-child { border-bottom: none; }
+            .empty-steps { grid-template-columns: 1fr; }
+            .panel-head { flex-direction: column; align-items: flex-start; padding: 18px 20px; }
+            .main-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+            h1.display { font-size: 26px; }
         }
     </style>
 </head>
 <body>
 <div class="toast-wrap" id="toastWrap"></div>
 
-<div class="wrap">
-    <header>
-        <div class="logo">
-            <div class="logo-icon">
-                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
-            </div>
-            <span class="logo-text">Doc<span>Extract</span></span>
-        </div>
-        <a href="/" class="badge">Extractor</a>
-    </header>
+<div class="shell">
 
-    <div class="card">
-        <div class="section-label">Analytics CSV Upload</div>
-        <div class="upload-zone" id="uploadZone">
-            <input type="file" id="uploadInput" accept=".csv,text/csv">
-            <div class="upload-icon">
-                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <aside class="rail">
+        <div>
+            <div class="brand">
+                <div class="brand-mark">D</div>
+                <div class="brand-name">Doc<em>Extract</em></div>
             </div>
-            <div class="upload-title" id="uploadTitle">Drop CSV here or click to browse</div>
-            <div class="upload-sub">CSV only · Parses extracted document data client-side</div>
+            <div class="rail-meta">
+                <span class="pulse"></span>
+                <span>Analytics · client-side</span>
+            </div>
         </div>
-        <div class="preview-strip" id="previewStrip">
+
+        <div class="rail-section-wrap">
+            <div class="rail-section-label">Workspace</div>
+            <nav class="nav-list">
+                <a class="nav-link" href="/">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+                    Extractor
+                    <span class="num">01</span>
+                </a>
+                <a class="nav-link active" href="/analytics">
+                    <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><polyline points="7 14 11 10 15 13 20 7"/></svg>
+                    Analytics
+                    <span class="num">02</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="rail-legend-wrap">
+            <div class="rail-section-label">Palette</div>
+            <div class="rail-legend">
+                <div class="legend-row"><span class="legend-swatch" style="background:#d4ff3a"></span><span class="legend-label">01 · Primary</span></div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#7cb7ff"></span><span class="legend-label">02 · Secondary</span></div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#ff6b6b"></span><span class="legend-label">03 · Tertiary</span></div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#8a8a8a"></span><span class="legend-label">04 · Neutral</span></div>
+                <div class="legend-row"><span class="legend-swatch" style="background:#5a5d63"></span><span class="legend-label">05 · Muted</span></div>
+            </div>
+        </div>
+
+        <div class="rail-footer">
+            v1.0 · Demo build<br>
+            <a href="#">Docs</a> · <a href="#">API</a> · <a href="#">Status</a>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="main-header">
             <div>
-                <div class="preview-name" id="previewName">-</div>
-                <div class="preview-meta" id="previewMeta">-</div>
+                <div class="eyebrow">
+                    <span class="eyebrow-slash">//</span>
+                    <span>02 · Analytics</span>
+                    <span>—</span>
+                    <span>Charts & ledger from your extractions</span>
+                </div>
+                <h1 class="display">Read the <em>numbers.</em></h1>
             </div>
-            <button class="export-btn" id="clearBtn">Clear</button>
+            <div class="header-right">
+                <span class="dot"></span>
+                <span id="clockText">—</span>
+            </div>
         </div>
-    </div>
 
-    <div class="inline-message" id="inlineMessage"></div>
+        <div class="main-body">
 
-    <div class="metrics-grid" id="metricsGrid">
-        <div class="metric-card">
-            <div class="metric-label">Total Spend</div>
-            <div class="metric-value" id="metricTotal">0</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Number Of Documents</div>
-            <div class="metric-value" id="metricCount">0</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Top Vendor</div>
-            <div class="metric-value" id="metricVendor">-</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Average Per Document</div>
-            <div class="metric-value" id="metricAverage">0</div>
-        </div>
-    </div>
+            <!-- ─── UPLOAD PANEL ─── -->
+            <section class="panel">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-kicker">Step 01 · Input</div>
+                        <div class="panel-title">Load your extracted CSV.</div>
+                    </div>
+                    <div class="badge">Client-side · no upload</div>
+                </div>
+                <div class="panel-body">
+                    <div class="upload-zone" id="uploadZone">
+                        <input type="file" id="uploadInput" accept=".csv,text/csv">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <div class="upload-title" id="uploadTitle">Drop CSV, <em>or click to browse</em></div>
+                        <div class="upload-sub">Parsed in your browser · nothing leaves this page</div>
+                    </div>
+                    <div class="preview-strip" id="previewStrip">
+                        <div class="preview-left">
+                            <div class="preview-icon">CSV</div>
+                            <div>
+                                <div class="preview-name" id="previewName">—</div>
+                                <div class="preview-meta" id="previewMeta">—</div>
+                            </div>
+                        </div>
+                        <button class="export-btn" id="clearBtn">Clear</button>
+                    </div>
+                </div>
+            </section>
 
-    <div class="charts-grid" id="chartsGrid">
-        <div class="chart-card">
-            <div class="section-label">Spend By Vendor</div>
-            <div class="chart-wrap"><canvas id="vendorChart"></canvas></div>
-        </div>
-        <div class="chart-card">
-            <div class="section-label">Spend Over Time</div>
-            <div class="chart-wrap"><canvas id="timeChart"></canvas></div>
-        </div>
-        <div class="chart-card full">
-            <div class="section-label">Spend By Payment Terms</div>
-            <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
-        </div>
-    </div>
+            <div class="inline-message" id="inlineMessage"></div>
 
-    <div class="card">
-        <div class="toolbar" id="tableToolbar">
-            <input class="search-input" id="searchInput" type="text" placeholder="Search across all columns...">
-            <button class="export-btn" id="downloadFilteredBtn">Download filtered CSV</button>
+            <!-- ─── EMPTY STATE (before data) ─── -->
+            <section class="empty-hero" id="emptyHero">
+                <div>
+                    <div class="empty-hero-sub">Waiting for data</div>
+                    <div class="empty-hero-big" style="margin-top:10px">Upload a CSV <em>to see spend, vendors, and trends.</em></div>
+                </div>
+                <div class="empty-steps">
+                    <div class="empty-step">
+                        <div class="empty-step-num">01</div>
+                        <div class="empty-step-title">Extract</div>
+                        <div class="empty-step-desc">Run documents through the Extractor.</div>
+                    </div>
+                    <div class="empty-step">
+                        <div class="empty-step-num">02</div>
+                        <div class="empty-step-title">Export CSV</div>
+                        <div class="empty-step-desc">Download or append to an existing ledger.</div>
+                    </div>
+                    <div class="empty-step">
+                        <div class="empty-step-num">03</div>
+                        <div class="empty-step-title">Analyze</div>
+                        <div class="empty-step-desc">Drop it above to see charts instantly.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─── METRICS ─── -->
+            <section class="metrics-grid" id="metricsGrid">
+                <div class="metric-card">
+                    <div class="metric-label"><span class="tick">◇</span>Total Spend</div>
+                    <div class="metric-value" id="metricTotal">0</div>
+                    <div class="metric-delta">All documents · cumulative</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label"><span class="tick">◇</span>Documents</div>
+                    <div class="metric-value mono-val" id="metricCount">0</div>
+                    <div class="metric-delta">Rows parsed</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label"><span class="tick">◇</span>Top Vendor</div>
+                    <div class="metric-value" id="metricVendor">—</div>
+                    <div class="metric-delta">Most frequent</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label"><span class="tick">◇</span>Avg / Doc</div>
+                    <div class="metric-value" id="metricAverage">0</div>
+                    <div class="metric-delta">Mean transaction</div>
+                </div>
+            </section>
+
+            <!-- ─── CHARTS ─── -->
+            <section class="charts-grid" id="chartsGrid">
+                <div class="chart-card dark">
+                    <div class="chart-head">
+                        <div>
+                            <div class="chart-kicker">Top 10 · horizontal bar</div>
+                            <div class="chart-title" style="color:var(--text)">Spend by vendor</div>
+                        </div>
+                    </div>
+                    <div class="chart-wrap"><canvas id="vendorChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-head">
+                        <div>
+                            <div class="chart-kicker">Monthly · area</div>
+                            <div class="chart-title">Spend over time</div>
+                        </div>
+                    </div>
+                    <div class="chart-wrap"><canvas id="timeChart"></canvas></div>
+                </div>
+                <div class="chart-card full">
+                    <div class="chart-head">
+                        <div>
+                            <div class="chart-kicker">Composition · doughnut</div>
+                            <div class="chart-title">Spend by payment terms</div>
+                        </div>
+                    </div>
+                    <div class="chart-wrap" style="min-height: 300px"><canvas id="categoryChart"></canvas></div>
+                </div>
+            </section>
+
+            <!-- ─── TABLE ─── -->
+            <section class="table-panel" id="tablePanel">
+                <div class="table-head-bar">
+                    <div>
+                        <div class="panel-kicker">Ledger · raw rows</div>
+                        <div class="panel-title">Every row, searchable.</div>
+                    </div>
+                    <button class="export-btn light" id="downloadFilteredBtn">
+                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download filtered
+                    </button>
+                </div>
+                <div class="toolbar" id="tableToolbar" style="margin:0;border-radius:0;border-left:none;border-right:none;border-top:none">
+                    <div class="search-wrap">
+                        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input class="search-input" id="searchInput" type="text" placeholder="search across all columns…">
+                    </div>
+                    <div class="toolbar-right" id="toolbarCount">—</div>
+                </div>
+                <div class="table-wrap" id="tableWrap">
+                    <table>
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
         </div>
-        <div class="table-wrap" id="tableWrap">
-            <table>
-                <thead id="tableHead"></thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-        </div>
-    </div>
+    </main>
 </div>
 
 <script>
@@ -398,14 +1036,27 @@
     let timeChartInstance = null;
     let categoryChartInstance = null;
 
-    const colors = ['#1a6ef5','#0d9e6a','#b45309','#dc2626','#7c3aed'];
+    const colors = ['#d4ff3a','#7cb7ff','#ff6b6b','#8a8a8a','#5a5d63','#c8c4bb','#3a3d42','#1c1e22'];
 
+    /* ── CLOCK ── */
+    function updateClock() {
+        const d = new Date();
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        const ss = String(d.getSeconds()).padStart(2, "0");
+        const el = document.getElementById("clockText");
+        if (el) el.textContent = `${hh}:${mm}:${ss} · ready`;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    /* ── TOAST ── */
     const toastWrap = document.getElementById("toastWrap");
 
     function showToast(msg) {
         const t = document.createElement("div");
         t.className = "toast";
-        t.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" style="stroke:currentColor;fill:none;stroke-width:2"><polyline points="20 6 9 17 4 12"/></svg>${msg}`;
+        t.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>${msg}`;
         toastWrap.appendChild(t);
         requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add("show")));
         setTimeout(() => {
@@ -623,11 +1274,14 @@
         });
 
         document.getElementById("metricTotal").textContent = formatMoney(sum, activeCurrency);
-        document.getElementById("metricCount").textContent = String(count);
+        document.getElementById("metricCount").textContent = String(count).padStart(2, "0");
         document.getElementById("metricVendor").textContent = topVendor;
         document.getElementById("metricAverage").textContent = formatMoney(count ? (sum / count) : 0, activeCurrency);
         document.getElementById("metricsGrid").style.display = "grid";
     }
+
+    /* ── CHART CONFIG HELPERS ── */
+    const chartFont = { family: 'JetBrains Mono', size: 10 };
 
     function renderVendorChart(rows, totalColumn, vendorColumn) {
         const grouped = new Map();
@@ -648,9 +1302,12 @@
                 datasets: [{
                     label: "Spend",
                     data: top.map(x => x[1]),
-                    backgroundColor: "rgba(26,110,245,0.8)",
-                    borderColor: "#1a6ef5",
-                    borderWidth: 1
+                    backgroundColor: "#d4ff3a",
+                    borderColor: "#d4ff3a",
+                    borderWidth: 0,
+                    borderRadius: 2,
+                    barThickness: 'flex',
+                    maxBarThickness: 18
                 }]
             },
             options: {
@@ -658,16 +1315,32 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: "bottom", labels: { font: { family: "DM Sans" } } },
+                    legend: { display: false },
                     tooltip: {
+                        backgroundColor: '#0b0c0d',
+                        titleColor: '#f4f0e8',
+                        bodyColor: '#d4ff3a',
+                        borderColor: '#2a2d33',
+                        borderWidth: 1,
+                        titleFont: chartFont,
+                        bodyFont: chartFont,
+                        padding: 10,
                         callbacks: {
-                            label: ctx => `${ctx.dataset.label}: ${formatMoney(ctx.raw, activeCurrency)}`
+                            label: ctx => ` ${formatMoney(ctx.raw, activeCurrency)}`
                         }
                     }
                 },
                 scales: {
-                    x: { grid: { color: "#f0f0f0" }, ticks: { font: { family: "DM Sans" } } },
-                    y: { grid: { display: false }, ticks: { font: { family: "DM Sans" } } }
+                    x: {
+                        grid: { color: "#2a2d33", drawTicks: false },
+                        border: { display: false },
+                        ticks: { font: chartFont, color: '#8a8a8a', callback: v => formatMoney(v, activeCurrency) }
+                    },
+                    y: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: { font: { ...chartFont, size: 11 }, color: '#c8c4bb' }
+                    }
                 }
             }
         });
@@ -704,37 +1377,62 @@
         const labels = points.map(x => {
             const [yearStr, monthStr] = x[0].split("-");
             const labelDate = new Date(Number(yearStr), Number(monthStr) - 1, 1);
-            return labelDate.toLocaleString("en", { month: "short", year: "numeric" });
+            return labelDate.toLocaleString("en", { month: "short", year: "2-digit" }).toUpperCase();
         });
 
-        timeChartInstance = new Chart(document.getElementById("timeChart"), {
+        const canvas = document.getElementById("timeChart");
+        const ctx = canvas.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 260);
+        grad.addColorStop(0, 'rgba(124,183,255,0.22)');
+        grad.addColorStop(1, 'rgba(124,183,255,0)');
+
+        timeChartInstance = new Chart(canvas, {
             type: "line",
             data: {
                 labels,
                 datasets: [{
                     label: "Spend",
                     data: points.map(x => x[1]),
-                    borderColor: "#1a6ef5",
-                    backgroundColor: "rgba(26,110,245,0.1)",
+                    borderColor: "#7cb7ff",
+                    backgroundColor: grad,
                     fill: true,
-                    pointRadius: 0,
-                    tension: 0.4
+                    pointRadius: 3,
+                    pointBackgroundColor: '#7cb7ff',
+                    pointBorderColor: '#0b0c0d',
+                    pointBorderWidth: 1.5,
+                    pointHoverRadius: 5,
+                    borderWidth: 1.5,
+                    tension: 0.3
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: "bottom", labels: { font: { family: "DM Sans" } } },
+                    legend: { display: false },
                     tooltip: {
-                        callbacks: {
-                            label: ctx => `${ctx.dataset.label}: ${formatMoney(ctx.raw, activeCurrency)}`
-                        }
+                        backgroundColor: '#0b0c0d',
+                        titleColor: '#f4f0e8',
+                        bodyColor: '#7cb7ff',
+                        borderColor: '#2a2d33',
+                        borderWidth: 1,
+                        titleFont: chartFont,
+                        bodyFont: chartFont,
+                        padding: 10,
+                        callbacks: { label: ctx => ` ${formatMoney(ctx.raw, activeCurrency)}` }
                     }
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { font: { family: "DM Sans" } } },
-                    y: { grid: { color: "#f0f0f0" }, ticks: { font: { family: "DM Sans" } } }
+                    x: {
+                        grid: { display: false },
+                        border: { color: '#2a2d33' },
+                        ticks: { font: chartFont, color: '#8a8a8a' }
+                    },
+                    y: {
+                        grid: { color: "#2a2d33", drawTicks: false },
+                        border: { display: false },
+                        ticks: { font: chartFont, color: '#8a8a8a', callback: v => formatMoney(v, activeCurrency) }
+                    }
                 }
             }
         });
@@ -758,18 +1456,39 @@
                     label: "Spend",
                     data: items.map(x => x[1]),
                     backgroundColor: items.map((_, i) => colors[i % colors.length]),
-                    borderWidth: 1
+                    borderColor: '#1c1e22',
+                    borderWidth: 2,
+                    hoverBorderWidth: 2,
+                    hoverOffset: 8
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: '62%',
                 plugins: {
-                    legend: { position: "bottom", labels: { font: { family: "DM Sans" } } },
-                    tooltip: {
-                        callbacks: {
-                            label: ctx => `${ctx.label}: ${formatMoney(ctx.raw, activeCurrency)}`
+                    legend: {
+                        position: "right",
+                        align: 'center',
+                        labels: {
+                            font: { ...chartFont, size: 11 },
+                            color: '#c8c4bb',
+                            boxWidth: 12,
+                            boxHeight: 12,
+                            padding: 14,
+                            usePointStyle: false
                         }
+                    },
+                    tooltip: {
+                        backgroundColor: '#0b0c0d',
+                        titleColor: '#f4f0e8',
+                        bodyColor: '#d4ff3a',
+                        borderColor: '#2a2d33',
+                        borderWidth: 1,
+                        titleFont: chartFont,
+                        bodyFont: chartFont,
+                        padding: 10,
+                        callbacks: { label: ctx => ` ${formatMoney(ctx.raw, activeCurrency)}` }
                     }
                 }
             }
@@ -784,13 +1503,16 @@
         body.innerHTML = rows.map(row => {
             return `<tr>${cols.map(h => {
                 const raw = String(row[h] ?? "");
-                const short = raw.length > 40 ? `${raw.slice(0, 40)}...` : raw;
+                const short = raw.length > 40 ? `${raw.slice(0, 40)}…` : raw;
                 return `<td title="${raw.replace(/"/g, "&quot;")}">${short}</td>`;
             }).join("")}</tr>`;
         }).join("");
 
-        document.getElementById("tableWrap").style.display = "block";
+        document.getElementById("tablePanel").style.display = "block";
         document.getElementById("tableToolbar").style.display = "flex";
+
+        const tc = document.getElementById("toolbarCount");
+        if (tc) tc.textContent = `${rows.length} / ${parsedRows.length} rows`;
     }
 
     function applySearch() {
@@ -808,8 +1530,9 @@
         activeFileName = filename;
 
         document.getElementById("previewName").textContent = filename;
-        document.getElementById("previewMeta").textContent = `${parsedRows.length} rows parsed`;
+        document.getElementById("previewMeta").textContent = `${parsedRows.length} rows parsed · ${headers.length} columns`;
         document.getElementById("previewStrip").style.display = "flex";
+        document.getElementById("emptyHero").style.display = "none";
 
         hideInlineMessage();
         document.getElementById("metricsGrid").style.display = "none";
@@ -901,9 +1624,10 @@
         document.getElementById("previewStrip").style.display = "none";
         document.getElementById("metricsGrid").style.display = "none";
         document.getElementById("chartsGrid").style.display = "none";
-        document.getElementById("tableWrap").style.display = "none";
+        document.getElementById("tablePanel").style.display = "none";
         document.getElementById("tableToolbar").style.display = "none";
         document.getElementById("searchInput").value = "";
+        document.getElementById("emptyHero").style.display = "flex";
         hideInlineMessage();
         destroyCharts();
     });

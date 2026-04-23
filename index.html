@@ -5,569 +5,1134 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DocExtract — AI Document Data Extraction</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --bg: #ffffff;
-            --surface: #ffffff;
-            --surface-2: #f7f8fa;
-            --border: #d4d7dc;
-            --border-hover: #b0b5be;
-            --text: #0f1117;
-            --text-muted: #6b7280;
-            --text-dim: #c4c8ce;
-            --accent: #1a6ef5;
-            --accent-dim: #eff4ff;
-            --accent-border: #93b8fb;
-            --green: #0d9e6a;
-            --green-dim: #ecfdf5;
-            --green-border: #6edbb8;
-            --red: #dc2626;
-            --red-dim: #fef2f2;
-            --red-border: #f99;
-            --amber: #b45309;
-            --amber-dim: #fffbeb;
-            --amber-border: #fbbf24;
-            --radius: 10px;
-            --radius-lg: 14px;
+            /* Canvas */
+            --ink: #0b0c0d;
+            --ink-2: #141518;
+            --ink-3: #1c1e22;
+            --ink-4: #24272c;
+            --line: #2a2d33;
+            --line-2: #363a41;
+
+            /* Surface (cream inverse) */
+            --cream: #f4f0e8;
+            --cream-2: #ebe6db;
+            --cream-3: #dcd6c8;
+            --bone: #fbf8f2;
+
+            /* Text */
+            --text: #f4f0e8;
+            --text-2: #c8c4bb;
+            --text-3: #8a8a8a;
+            --text-4: #5a5d63;
+
+            /* On-cream text */
+            --ink-on-cream: #0b0c0d;
+            --muted-on-cream: #5a5751;
+            --dim-on-cream: #8a857b;
+
+            /* Accent — chartreuse / electric lime */
+            --volt: #d4ff3a;
+            --volt-dim: #a8cc2e;
+            --volt-soft: rgba(212,255,58,0.12);
+
+            /* Semantic */
+            --green: #5be29b;
+            --red: #ff6b6b;
+            --amber: #ffb547;
+            --blue: #7cb7ff;
+
+            --radius: 4px;
+            --radius-lg: 8px;
         }
+
+        html, body { background: var(--ink); }
 
         body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--bg);
+            font-family: 'Inter', -apple-system, sans-serif;
             color: var(--text);
             min-height: 100vh;
-            padding: 36px 20px;
             -webkit-font-smoothing: antialiased;
+            font-feature-settings: "ss01", "cv11";
+            line-height: 1.45;
+            overflow-x: hidden;
         }
 
-        .wrap { max-width: 900px; margin: 0 auto; }
+        /* grainy noise overlay */
+        body::before {
+            content: "";
+            position: fixed; inset: 0;
+            pointer-events: none;
+            opacity: 0.035;
+            z-index: 1;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+        }
 
-        /* ── HEADER ── */
-        header {
+        .serif { font-family: 'Instrument Serif', serif; font-weight: 400; letter-spacing: -0.01em; }
+        .mono  { font-family: 'JetBrains Mono', monospace; font-feature-settings: "zero", "ss01"; }
+        .tabular { font-variant-numeric: tabular-nums; }
+
+        /* ────────── LAYOUT ────────── */
+        .shell {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            min-height: 100vh;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ───── SIDE RAIL ───── */
+        .rail {
+            border-right: 1px solid var(--line);
+            padding: 28px 24px;
+            position: sticky; top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .brand { display: flex; align-items: center; gap: 10px; }
+
+        .brand-mark {
+            width: 30px; height: 30px; border-radius: 6px;
+            background: var(--volt);
+            color: var(--ink);
+            display: grid; place-items: center;
+            font-family: 'Instrument Serif', serif;
+            font-size: 20px; font-style: italic;
+            line-height: 1;
+            box-shadow: 0 0 24px rgba(212,255,58,0.25);
+        }
+
+        .brand-name {
+            font-family: 'Instrument Serif', serif;
+            font-size: 22px;
+            letter-spacing: -0.02em;
+            line-height: 1;
+        }
+        .brand-name em { font-style: italic; color: var(--volt); }
+
+        .rail-meta {
+            display: flex; align-items: center; gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            padding-top: 4px;
+        }
+
+        .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--volt); position: relative; flex-shrink: 0; }
+        .pulse::after {
+            content: ""; position: absolute; inset: -3px;
+            border-radius: 50%;
+            background: var(--volt);
+            opacity: 0.5;
+            animation: pulse 1.8s ease-out infinite;
+        }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.4); opacity: 0; } }
+
+        .rail-section-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .rail-section-label::before {
+            content: ""; display: block;
+            width: 16px; height: 1px; background: var(--line-2);
+        }
+
+        .nav-list { display: flex; flex-direction: column; gap: 2px; }
+        .nav-link {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px;
+            border-radius: var(--radius);
+            color: var(--text-2);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+        }
+        .nav-link:hover { color: var(--text); background: var(--ink-2); }
+        .nav-link.active {
+            color: var(--ink);
+            background: var(--volt);
+            border-color: var(--volt);
+        }
+        .nav-link.active .num { opacity: 0.5; color: var(--ink); }
+        .nav-link .num {
+            margin-left: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            opacity: 0.6;
+        }
+        .nav-link svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.6; flex-shrink: 0; }
+
+        .rail-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+        .rail-stat {
+            border: none;
+            border-top: 1px solid var(--line);
+            border-radius: 0;
+            padding: 18px 0 16px;
+            position: relative;
+        }
+        .rail-stat:first-child { border-top: none; padding-top: 0; }
+        .rail-stat-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .rail-stat-label::before {
+            content: "";
+            width: 10px; height: 1px;
+            background: var(--line-2);
+        }
+        .rail-stat-val {
+            font-family: 'Instrument Serif', serif;
+            font-style: italic;
+            font-size: 64px;
+            line-height: 1;
+            margin-top: 10px;
+            letter-spacing: -0.03em;
+            color: var(--text);
+        }
+        .rail-stat:first-child .rail-stat-val { color: var(--volt); }
+
+        .rail-footer {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--line);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-4);
+            line-height: 1.6;
+        }
+        .rail-footer a { color: var(--text-3); text-decoration: none; }
+        .rail-footer a:hover { color: var(--volt); }
+
+        /* ───── MAIN ───── */
+        .main {
+            padding: 0;
+            min-width: 0;
+        }
+
+        .main-header {
+            padding: 28px 48px 24px;
+            border-bottom: 1px solid var(--line);
+            display: flex; align-items: flex-end; justify-content: space-between;
+            gap: 24px;
+            background: var(--ink);
+            position: sticky; top: 0; z-index: 10;
+            backdrop-filter: blur(6px);
+        }
+
+        .eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--text-3);
+            margin-bottom: 8px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .eyebrow-slash { color: var(--text-3); }
+
+        h1.display {
+            font-family: 'Instrument Serif', serif;
+            font-size: 44px;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            font-weight: 400;
+        }
+        h1.display em { font-style: italic; color: var(--text-3); }
+
+        .header-right {
+            display: flex; align-items: center; gap: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-3);
+        }
+        .header-right .dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; box-shadow: 0 0 8px var(--green); }
+
+        .main-body { padding: 36px 48px 80px; display: flex; flex-direction: column; gap: 28px; max-width: 1200px; }
+
+        /* ───── PANEL (major sections on cream) ───── */
+        .panel {
+            background: var(--cream);
+            color: var(--ink-on-cream);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .panel-dark {
+            background: var(--ink-2);
+            border: 1px solid var(--line);
+            color: var(--text);
+            border-radius: var(--radius-lg);
+        }
+
+        .panel-head {
             display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 40px; padding-bottom: 24px;
-            border-bottom: 1.5px solid var(--border);
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--cream-3);
+        }
+        .panel-dark .panel-head { border-bottom-color: var(--line); }
+
+        .panel-title {
+            font-family: 'Instrument Serif', serif;
+            font-size: 24px;
+            letter-spacing: -0.01em;
+            line-height: 1;
+        }
+        .panel-kicker {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--muted-on-cream);
+            margin-bottom: 6px;
+        }
+        .panel-dark .panel-kicker { color: var(--text-3); }
+
+        .panel-body { padding: 28px; }
+
+        .panel-step {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--muted-on-cream);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
         }
 
-        .logo { display: flex; align-items: center; gap: 10px; }
-
-        .logo-icon {
-            width: 32px; height: 32px; background: var(--accent);
-            border-radius: 8px; display: flex; align-items: center; justify-content: center;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .logo-icon:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,110,245,0.28); }
-        .logo-icon svg { width: 17px; height: 17px; stroke: white; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-        .logo-text { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
-        .logo-text span { color: var(--accent); }
-
-        .badge {
-            font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted);
-            background: var(--surface-2); border: 1.5px solid var(--border);
-            padding: 4px 10px; border-radius: 6px; letter-spacing: 0.3px;
-        }
-
-        .section-label {
-            font-size: 11px; font-weight: 500; letter-spacing: 0.8px;
-            text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;
-        }
-
-        .card {
-            background: var(--surface); border: 1.5px solid var(--border);
-            border-radius: var(--radius-lg); padding: 24px; margin-bottom: 14px;
-        }
-
-        /* ── SCHEMA GRID ── */
+        /* ───── SCHEMA GRID ───── */
         .schema-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 0;
+            border-top: 1px solid var(--cream-3);
+            border-left: 1px solid var(--cream-3);
         }
 
         .schema-btn {
-            background: var(--surface-2); border: 1.5px solid var(--border);
-            border-radius: var(--radius); padding: 12px 14px; cursor: pointer;
-            text-align: left; transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1),
-            box-shadow 0.18s ease, border-color 0.15s ease, background 0.15s ease;
+            background: transparent;
+            border: none;
+            border-right: 1px solid var(--cream-3);
+            border-bottom: 1px solid var(--cream-3);
+            padding: 20px 18px;
+            cursor: pointer;
+            text-align: left;
+            font-family: inherit;
+            color: var(--ink-on-cream);
+            position: relative;
+            transition: background 0.15s ease;
             outline: none;
+            min-height: 112px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
-        .schema-btn:hover {
-            border-color: var(--border-hover); background: #fff;
-            transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        }
-
-        .schema-btn:active { transform: translateY(0) scale(0.98); transition: transform 0.08s ease; }
+        .schema-btn:hover { background: var(--cream-2); }
 
         .schema-btn.active {
-            background: var(--accent-dim); border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(26,110,245,0.12);
+            background: var(--ink);
+            color: var(--cream);
+        }
+        .schema-btn.active::before {
+            content: ""; position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+            background: var(--volt);
         }
 
-        .schema-btn.active:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(26,110,245,0.18), 0 0 0 3px rgba(26,110,245,0.12); }
+        .schema-btn-top {
+            display: flex; align-items: center; justify-content: space-between;
+        }
 
         .schema-icon-wrap {
-            width: 28px; height: 28px; border-radius: 7px; background: #dde1e8;
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 8px;
-            transition: background 0.15s ease, transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
+            width: 32px; height: 32px; border-radius: 6px;
+            background: rgba(11,12,13,0.06);
+            display: grid; place-items: center;
+            transition: all 0.15s ease;
+        }
+        .schema-btn.active .schema-icon-wrap { background: var(--volt); }
+        .schema-icon-wrap svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+        .schema-btn.active .schema-icon-wrap svg { stroke: var(--ink); }
+
+        .schema-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--dim-on-cream);
+        }
+        .schema-btn.active .schema-num { color: var(--text-3); }
+
+        .schema-name {
+            font-size: 15px;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            margin-top: 24px;
         }
 
-        .schema-btn:hover .schema-icon-wrap { background: #c8cdd7; transform: scale(1.08); }
-        .schema-btn.active .schema-icon-wrap { background: var(--accent); }
+        .schema-desc {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--dim-on-cream);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .schema-btn.active .schema-desc { color: var(--text-3); }
 
-        .schema-icon-wrap svg { width: 14px; height: 14px; stroke: #6b7280; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.15s; }
-        .schema-btn:hover .schema-icon-wrap svg { stroke: #3a3f4a; }
-        .schema-btn.active .schema-icon-wrap svg { stroke: #fff; }
-
-        .schema-name { font-size: 13px; font-weight: 500; color: var(--text-muted); transition: color 0.15s; }
-        .schema-btn:hover .schema-name { color: var(--text); }
-        .schema-btn.active .schema-name { color: var(--accent); }
-
-        /* ── CUSTOM FIELDS ── */
+        /* ───── CUSTOM FIELDS ───── */
         .custom-fields-wrap {
-            display: none; margin-top: 14px; padding-top: 14px;
-            border-top: 1.5px solid var(--border);
+            display: none;
+            padding: 24px 28px;
+            background: var(--bone);
+            border-top: 1px solid var(--cream-3);
         }
 
-        .custom-field-row { display: flex; gap: 8px; margin-bottom: 8px; }
+        .custom-fields-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--muted-on-cream);
+            margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .custom-fields-label::after { content: ""; flex: 1; height: 1px; background: var(--cream-3); }
+
+        .custom-field-row {
+            display: grid;
+            grid-template-columns: 1fr 1.4fr 36px;
+            gap: 6px; margin-bottom: 6px;
+        }
 
         .custom-field-row input {
-            flex: 1; padding: 9px 12px; font-family: 'DM Sans', sans-serif;
-            font-size: 13px; background: var(--surface-2);
-            border: 1.5px solid var(--border); border-radius: 8px;
-            color: var(--text); outline: none;
-            transition: border-color 0.15s ease;
+            padding: 10px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            background: #fff;
+            border: 1px solid var(--cream-3);
+            border-radius: var(--radius);
+            color: var(--ink-on-cream);
+            outline: none;
+            transition: border-color 0.15s;
         }
-
-        .custom-field-row input:focus { border-color: var(--accent); }
-        .custom-field-row input::placeholder { color: var(--text-dim); }
+        .custom-field-row input:focus { border-color: var(--ink); }
+        .custom-field-row input::placeholder { color: var(--dim-on-cream); }
 
         .add-field-btn {
-            display: flex; align-items: center; gap: 6px;
-            padding: 8px 14px; font-family: 'DM Sans', sans-serif;
-            font-size: 12px; font-weight: 500; color: var(--accent);
-            background: var(--accent-dim); border: 1.5px solid var(--accent-border);
-            border-radius: 8px; cursor: pointer;
-            transition: background 0.15s, transform 0.15s;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 9px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--ink-on-cream);
+            background: transparent;
+            border: 1px dashed var(--ink-on-cream);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: background 0.15s;
         }
-
-        .add-field-btn:hover { background: #ddeaff; transform: translateY(-1px); }
-        .add-field-btn svg { width: 12px; height: 12px; stroke: var(--accent); fill: none; stroke-width: 2.5; }
+        .add-field-btn:hover { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+        .add-field-btn svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 2; }
 
         .remove-field-btn {
-            width: 34px; height: 34px; flex-shrink: 0;
-            background: var(--surface-2); border: 1.5px solid var(--border);
-            border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: background 0.15s, border-color 0.15s, transform 0.15s;
+            background: transparent;
+            border: 1px solid var(--cream-3);
+            border-radius: var(--radius);
+            cursor: pointer;
+            display: grid; place-items: center;
+            transition: all 0.15s;
         }
+        .remove-field-btn:hover { background: var(--ink); border-color: var(--ink); }
+        .remove-field-btn svg { width: 11px; height: 11px; stroke: var(--muted-on-cream); fill: none; stroke-width: 1.8; transition: stroke 0.15s; }
+        .remove-field-btn:hover svg { stroke: var(--cream); }
 
-        .remove-field-btn:hover { background: var(--red-dim); border-color: var(--red-border); transform: scale(1.08); }
-        .remove-field-btn svg { width: 12px; height: 12px; stroke: var(--text-muted); fill: none; stroke-width: 2; transition: stroke 0.15s; }
-        .remove-field-btn:hover svg { stroke: var(--red); }
-
-        /* ── UPLOAD ── */
-        .upload-card {
-            border: 1.5px solid var(--border); border-radius: var(--radius-lg);
-            overflow: hidden; margin-bottom: 14px; background: var(--surface);
-        }
-
+        /* ───── MODE TOGGLE ───── */
         .mode-toggle-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 14px;
+            display: flex;
+            padding: 4px;
+            background: var(--ink-2);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            width: fit-content;
+            gap: 2px;
         }
 
         .mode-toggle-btn {
-            background: var(--surface-2);
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius);
-            padding: 12px 14px;
-            cursor: pointer;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 13px;
+            background: transparent;
+            border: none;
+            padding: 8px 18px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
             font-weight: 500;
-            color: var(--text-muted);
-            transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1),
-            box-shadow 0.18s ease, border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
-            outline: none;
+            color: var(--text-3);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+            display: inline-flex; align-items: center; gap: 8px;
         }
-
-        .mode-toggle-btn:hover {
-            border-color: var(--border-hover);
-            background: #fff;
-            color: var(--text);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        .mode-toggle-btn .tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            padding: 2px 5px;
+            background: var(--ink-4);
+            border-radius: 3px;
+            color: var(--text-3);
+            letter-spacing: 0.06em;
         }
-
+        .mode-toggle-btn:hover { color: var(--text); }
         .mode-toggle-btn.active {
-            background: var(--accent-dim);
-            border-color: var(--accent);
-            color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(26,110,245,0.12);
+            background: var(--cream);
+            color: var(--ink);
         }
+        .mode-toggle-btn.active .tag { background: var(--ink); color: var(--cream); }
 
-        .mode-toggle-btn:active { transform: translateY(0) scale(0.98); }
+        /* ───── UPLOAD ZONE ───── */
+        .upload-card { position: relative; }
 
         .upload-zone {
-            border: 2px dashed var(--border); border-radius: 10px; margin: 8px;
-            padding: 44px 20px; text-align: center; cursor: pointer;
-            transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s cubic-bezier(0.34,1.56,0.64,1);
-            background: var(--surface-2); position: relative;
+            border: 2px dashed var(--volt);
+            border-radius: var(--radius-lg);
+            margin: 0;
+            padding: 100px 24px 88px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+            background: var(--bone);
+            position: relative;
+            overflow: hidden;
+            min-height: 420px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
 
-        .upload-zone:hover, .upload-zone.drag-over {
-            border-color: var(--accent); background: var(--accent-dim); transform: scale(1.005);
+        .upload-zone::before {
+            content: "D";
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -54%);
+            font-family: 'Instrument Serif', serif;
+            font-style: italic;
+            font-size: 380px;
+            line-height: 1;
+            color: var(--ink-on-cream);
+            opacity: 0.05;
+            pointer-events: none;
+            transition: color 0.25s ease, opacity 0.25s ease, transform 0.4s ease;
+            letter-spacing: -0.04em;
+            z-index: 0;
         }
 
-        .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+        .upload-zone:hover::before { opacity: 0.08; transform: translate(-50%, -54%) rotate(-3deg); }
+
+        .upload-zone:hover {
+            border-color: var(--volt);
+            background: #fff;
+        }
+
+        .upload-zone.drag-over {
+            background: var(--volt);
+            border-color: var(--volt);
+            border-style: solid;
+            color: var(--ink);
+        }
+        .upload-zone.drag-over::before { color: var(--ink); opacity: 0.18; }
+        .upload-zone.drag-over .upload-title,
+        .upload-zone.drag-over .upload-title em,
+        .upload-zone.drag-over .upload-sub { color: var(--ink); }
+        .upload-zone.drag-over .upload-icon { background: var(--ink); color: var(--volt); }
+
+        .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; z-index: 3; }
+
+        .upload-zone > * { position: relative; z-index: 2; }
 
         .upload-icon {
-            width: 44px; height: 44px; background: #fff; border: 1.5px solid var(--border);
-            border-radius: 10px; display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 14px;
-            transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.15s ease;
+            width: 56px; height: 56px;
+            background: var(--ink);
+            color: var(--volt);
+            border-radius: 12px;
+            display: grid; place-items: center;
+            margin: 0 auto 22px;
+            transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+            box-shadow: 0 8px 24px rgba(11,12,13,0.15);
+        }
+        .upload-zone:hover .upload-icon { transform: translateY(-3px) rotate(-4deg); }
+        .upload-icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+        .upload-title {
+            font-family: 'Instrument Serif', serif;
+            font-size: 34px;
+            color: var(--ink-on-cream);
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            transition: color 0.2s ease;
+        }
+        .upload-title em { font-style: italic; color: var(--muted-on-cream); transition: color 0.2s ease; }
+        .upload-sub {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--muted-on-cream);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            transition: color 0.2s ease;
         }
 
-        .upload-zone:hover .upload-icon, .upload-zone.drag-over .upload-icon { transform: translateY(-3px); border-color: var(--accent-border); }
-        .upload-icon svg { width: 18px; height: 18px; stroke: var(--text-muted); fill: none; stroke-width: 1.5; transition: stroke 0.15s; }
-        .upload-zone:hover .upload-icon svg, .upload-zone.drag-over .upload-icon svg { stroke: var(--accent); }
-
-        .upload-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; transition: color 0.15s; }
-        .upload-zone:hover .upload-title, .upload-zone.drag-over .upload-title { color: var(--accent); }
-        .upload-sub { font-size: 12px; color: var(--text-muted); }
-
+        /* ───── PREVIEW STRIP ───── */
         .preview-strip {
-            display: none; align-items: center; gap: 14px;
-            padding: 12px 16px; background: var(--surface-2);
-            border-top: 1.5px solid var(--border);
+            display: none;
+            align-items: center; gap: 16px;
+            padding: 14px 20px;
+            background: var(--ink);
+            color: var(--cream);
+            border-radius: var(--radius-lg);
+            margin-top: 12px;
         }
 
         .preview-thumb {
-            width: 48px; height: 48px; border-radius: 8px; object-fit: cover;
-            border: 1.5px solid var(--border); flex-shrink: 0;
+            width: 48px; height: 60px;
+            border-radius: 4px;
+            object-fit: cover;
+            flex-shrink: 0;
+            border: 1px solid var(--line-2);
         }
-
         .preview-thumb.pdf-thumb {
-            display: flex; align-items: center; justify-content: center;
-            background: var(--accent-dim); border-color: var(--accent-border);
-            font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
-            color: var(--accent);
+            display: grid; place-items: center;
+            background: var(--volt);
+            color: var(--ink);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px; font-weight: 600;
+            border-color: var(--volt);
         }
-
         .preview-info { flex: 1; min-width: 0; }
-        .preview-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .preview-size { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-
-        .preview-clear {
-            width: 28px; height: 28px; border: 1.5px solid var(--border);
-            border-radius: 7px; background: var(--surface);
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
-            transition: border-color 0.15s, background 0.15s, transform 0.15s; flex-shrink: 0;
+        .preview-name {
+            font-size: 13px; font-weight: 500;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
+        .preview-size {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px; color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-top: 3px;
+        }
+        .preview-clear {
+            width: 30px; height: 30px;
+            border: 1px solid var(--line-2);
+            border-radius: var(--radius);
+            background: transparent;
+            color: var(--text-3);
+            display: grid; place-items: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .preview-clear:hover { border-color: var(--red); color: var(--red); }
+        .preview-clear svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.8; }
 
-        .preview-clear:hover { border-color: var(--red-border); background: var(--red-dim); transform: scale(1.08); }
-        .preview-clear svg { width: 13px; height: 13px; stroke: var(--text-muted); fill: none; stroke-width: 1.8; transition: stroke 0.15s; }
-        .preview-clear:hover svg { stroke: var(--red); }
-
+        /* ───── BULK QUEUE ───── */
         .bulk-queue-wrap {
             display: none;
-            margin: 0 8px 8px;
-            padding: 12px;
-            background: var(--surface-2);
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
+            margin-top: 14px;
+            padding: 18px;
+            background: var(--ink);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
         }
 
         .bulk-progress-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 14px;
         }
-
         .bulk-progress-track {
-            flex: 1;
-            height: 4px;
-            background: #dbe3f1;
-            border-radius: 999px;
+            flex: 1; height: 2px;
+            background: var(--line-2);
             overflow: hidden;
+            position: relative;
         }
-
         .bulk-progress-fill {
-            height: 100%;
-            width: 0%;
-            background: var(--accent);
-            transition: width 0.2s ease;
+            height: 100%; width: 0%;
+            background: var(--volt);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 8px var(--volt);
         }
-
         .bulk-progress-text {
-            font-size: 12px;
-            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-2);
             white-space: nowrap;
+            letter-spacing: 0.04em;
         }
 
         .bulk-queue-list {
-            border: 1.5px solid var(--border);
-            border-radius: 8px;
-            background: var(--surface);
-            max-height: 220px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            background: var(--ink-2);
+            max-height: 260px;
             overflow-y: auto;
         }
+        .bulk-queue-list::-webkit-scrollbar { width: 6px; }
+        .bulk-queue-list::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
 
         .bulk-queue-item {
             display: grid;
-            grid-template-columns: 42px 1fr auto auto;
-            gap: 10px;
+            grid-template-columns: 36px 1fr auto auto;
+            gap: 12px;
             align-items: center;
-            padding: 8px 10px;
-            border-bottom: 1px solid var(--border);
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--line);
             font-size: 12px;
         }
-
         .bulk-queue-item:last-child { border-bottom: none; }
-
-        .bulk-file-name {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .bulk-queue-item > div:first-child {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-4);
         }
-
-        .bulk-file-size { color: var(--text-muted); }
+        .bulk-file-name {
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            color: var(--text);
+        }
+        .bulk-file-size {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            letter-spacing: 0.04em;
+        }
 
         .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 8px;
-            border-radius: 999px;
-            border: 1.5px solid var(--border);
-            font-size: 11px;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 3px 8px;
+            border-radius: 3px;
+            border: 1px solid var(--line-2);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
             font-weight: 500;
-            background: var(--surface-2);
-            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            background: transparent;
+            color: var(--text-3);
+        }
+        .status-badge.pending { color: var(--text-3); }
+        .status-badge.extracting {
+            background: var(--volt-soft);
+            border-color: var(--volt);
+            color: var(--volt);
+        }
+        .status-badge.done {
+            background: rgba(91,226,155,0.08);
+            border-color: rgba(91,226,155,0.4);
+            color: var(--green);
+        }
+        .status-badge.failed {
+            background: rgba(255,107,107,0.08);
+            border-color: rgba(255,107,107,0.4);
+            color: var(--red);
         }
 
-        .status-badge.pending { background: #f3f4f6; border-color: #d1d5db; color: #6b7280; }
-        .status-badge.extracting { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); }
-        .status-badge.done { background: var(--green-dim); border-color: var(--green-border); color: var(--green); }
-        .status-badge.failed { background: var(--red-dim); border-color: var(--red-border); color: var(--red); }
-
         .tiny-spinner {
-            width: 10px;
-            height: 10px;
-            border: 2px solid rgba(26,110,245,0.25);
-            border-top-color: var(--accent);
+            width: 9px; height: 9px;
+            border: 1.5px solid rgba(212,255,58,0.2);
+            border-top-color: var(--volt);
             border-radius: 50%;
             animation: spin 0.75s linear infinite;
         }
 
-        .bulk-actions {
-            display: none;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
+        .bulk-actions { display: none; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 
+        /* ───── PRIMARY BUTTON ───── */
         .run-btn {
-            display: none; width: 100%; margin-top: 10px; padding: 13px 0;
-            background: var(--accent); color: #fff;
-            font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
-            border: none; border-radius: var(--radius); cursor: pointer;
-            transition: background 0.15s, transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s;
+            display: none;
+            width: 100%;
+            margin-top: 12px;
+            padding: 0;
+            background: var(--volt);
+            color: var(--ink);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all 0.15s;
+            overflow: hidden;
+            height: 52px;
+            position: relative;
+            letter-spacing: -0.005em;
         }
-
-        .run-btn:hover { background: #1560e0; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(26,110,245,0.3); }
-        .run-btn:active { transform: translateY(0) scale(0.98); box-shadow: none; }
-        .run-btn:disabled { background: var(--text-muted); cursor: not-allowed; transform: none; box-shadow: none; }
-
-        /* ── LOADING ── */
-        .loading-card {
-            display: none; background: var(--surface);
-            border: 1.5px solid var(--border); border-radius: var(--radius-lg);
-            padding: 18px 24px; margin-bottom: 14px;
-        }
-
-        .loading-inner { display: flex; align-items: center; gap: 12px; }
-
-        .spinner {
-            width: 16px; height: 16px; border: 2px solid var(--border);
-            border-top-color: var(--accent); border-radius: 50%;
-            animation: spin 0.75s linear infinite; flex-shrink: 0;
-        }
-
-        .loading-text { font-size: 13px; color: var(--text-muted); }
-        .loading-text strong { color: var(--text); font-weight: 500; }
-
-        /* ── RESULTS ── */
-        .results-card {
-            display: none; background: var(--surface);
-            border: 1.5px solid var(--border); border-radius: var(--radius-lg);
-            padding: 20px 24px; margin-bottom: 14px;
-        }
-
-        .results-header {
+        .run-btn-inner {
             display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 16px; padding-bottom: 14px;
-            border-bottom: 1.5px solid var(--border);
+            padding: 0 20px;
+            height: 100%;
+        }
+        .run-btn-label { display: inline-flex; align-items: center; gap: 10px; }
+        .run-btn-label::before {
+            content: ""; width: 6px; height: 6px;
+            background: var(--ink);
+            border-radius: 50%;
+        }
+        .run-btn-kbd {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            padding: 3px 7px;
+            background: rgba(11,12,13,0.12);
+            border-radius: 3px;
+            letter-spacing: 0.06em;
+        }
+        .run-btn-arrow {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+        .run-btn:hover { box-shadow: 0 0 0 3px rgba(212,255,58,0.25); transform: translateY(-1px); }
+        .run-btn:active { transform: translateY(0); }
+        .run-btn:disabled { background: var(--line-2); color: var(--text-3); cursor: not-allowed; box-shadow: none; transform: none; }
+        .run-btn:disabled .run-btn-label::before { background: var(--text-3); }
+
+        /* bulk run button specific — dark variant inside dark queue */
+        #bulkRunBtn {
+            display: block !important;
+            max-width: 280px;
         }
 
-        .export-row { display: flex; gap: 8px; }
+        /* ───── LOADING ───── */
+        .loading-card {
+            display: none;
+            background: var(--ink-2);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            padding: 24px 28px;
+            position: relative;
+            overflow: hidden;
+        }
+        .loading-card::before {
+            content: "";
+            position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--text-2), transparent);
+            animation: scanline 2s linear infinite;
+        }
+        @keyframes scanline {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .loading-inner { display: flex; align-items: center; gap: 16px; }
+        .spinner {
+            width: 22px; height: 22px;
+            border: 2px solid var(--line-2);
+            border-top-color: var(--volt);
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+            flex-shrink: 0;
+        }
+        .loading-text {
+            font-size: 14px;
+            color: var(--text-2);
+        }
+        .loading-text strong {
+            color: var(--text);
+            font-weight: 500;
+            font-family: 'Instrument Serif', serif;
+            font-size: 18px;
+            letter-spacing: -0.01em;
+        }
+        .loading-text-sub {
+            display: block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-top: 4px;
+        }
+
+        /* ───── RESULTS ───── */
+        .results-card { display: none; }
+
+        .export-row { display: flex; gap: 6px; flex-wrap: wrap; }
 
         .export-btn {
-            display: flex; align-items: center; gap: 6px;
-            padding: 7px 14px; font-family: 'DM Sans', sans-serif;
-            font-size: 12px; font-weight: 500; cursor: pointer;
-            border-radius: 8px; border: 1.5px solid var(--border);
-            background: var(--surface-2); color: var(--text-muted);
-            transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s,
-                        border-color 0.15s, background 0.15s, color 0.15s;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            border-radius: var(--radius);
+            border: 1px solid var(--cream-3);
+            background: transparent;
+            color: var(--ink-on-cream);
+            transition: all 0.15s;
         }
-
         .export-btn:hover {
-            border-color: var(--border-hover); background: #fff; color: var(--text);
-            transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+            background: var(--ink); color: var(--cream); border-color: var(--ink);
         }
+        .export-btn svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 1.8; }
 
-        .export-btn:active { transform: translateY(0) scale(0.97); }
-        .export-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+        /* overrides for export buttons inside dark contexts */
+        .panel-dark .export-btn,
+        .bulk-queue-wrap .export-btn {
+            border-color: var(--line-2);
+            color: var(--text-2);
+        }
+        .panel-dark .export-btn:hover,
+        .bulk-queue-wrap .export-btn:hover {
+            background: var(--volt); color: var(--ink); border-color: var(--volt);
+        }
 
         .hidden-file-input { display: none; }
 
         .clear-results-btn {
-            width: 30px; height: 30px; border: 1.5px solid var(--border);
-            border-radius: 8px; background: var(--surface-2);
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
-            transition: border-color 0.15s, background 0.15s, transform 0.15s;
+            width: 32px; height: 32px;
+            border: 1px solid var(--cream-3);
+            border-radius: var(--radius);
+            background: transparent;
+            color: var(--muted-on-cream);
+            display: grid; place-items: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .clear-results-btn:hover { border-color: var(--red); color: var(--red); }
+        .clear-results-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+
+        /* results summary bar */
+        .results-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            border-top: 1px solid var(--cream-3);
+            border-bottom: 1px solid var(--cream-3);
+        }
+        .results-summary-cell {
+            padding: 16px 28px;
+            border-right: 1px solid var(--cream-3);
+        }
+        .results-summary-cell:last-child { border-right: none; }
+        .results-summary-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted-on-cream);
+        }
+        .results-summary-val {
+            font-family: 'Instrument Serif', serif;
+            font-size: 22px;
+            margin-top: 4px;
+            line-height: 1.1;
+            letter-spacing: -0.01em;
+        }
+        .results-summary-val.mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px;
+            font-weight: 500;
         }
 
-        .clear-results-btn:hover { border-color: var(--red-border); background: var(--red-dim); transform: scale(1.08); }
-        .clear-results-btn svg { width: 13px; height: 13px; stroke: var(--text-muted); fill: none; stroke-width: 1.8; transition: stroke 0.15s; }
-        .clear-results-btn:hover svg { stroke: var(--red); }
-
-        /* ── FIELD TABLE ── */
+        /* ───── FIELD TABLE ───── */
+        .fields-table-wrap { padding: 12px 0; }
         .fields-table { width: 100%; border-collapse: collapse; }
-
-        .fields-table tr { border-bottom: 1px solid var(--border); }
+        .fields-table tr {
+            border-bottom: 1px solid var(--cream-3);
+            transition: background 0.15s;
+        }
         .fields-table tr:last-child { border-bottom: none; }
+        .fields-table tr:hover { background: var(--cream-2); }
 
         .fields-table td {
-            padding: 10px 4px; font-size: 13px; vertical-align: top;
+            padding: 14px 28px;
+            font-size: 14px;
+            vertical-align: top;
         }
 
+        .field-key-cell { width: 38%; padding-right: 16px !important; }
+        .field-key-wrap { display: flex; align-items: center; gap: 10px; }
+        .field-key-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--dim-on-cream);
+            min-width: 20px;
+        }
         .field-key {
-            font-family: 'DM Mono', monospace; font-size: 12px;
-            color: var(--text-muted); width: 36%; padding-right: 16px;
-            white-space: nowrap;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--muted-on-cream);
+            font-weight: 500;
         }
 
-        .field-value { color: var(--text); line-height: 1.5; }
-        .field-value.null-value { color: var(--text-dim); font-style: italic; }
-
+        .field-value {
+            color: var(--ink-on-cream);
+            line-height: 1.5;
+            font-variant-numeric: tabular-nums;
+        }
+        .field-value.null-value {
+            color: var(--dim-on-cream);
+            font-style: italic;
+            font-family: 'Instrument Serif', serif;
+            font-size: 15px;
+        }
         .field-value pre {
-            font-family: 'DM Mono', monospace; font-size: 11px;
-            background: var(--surface-2); border: 1.5px solid var(--border);
-            border-radius: 6px; padding: 8px 10px;
-            white-space: pre-wrap; word-break: break-word; margin: 0;
-            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            background: var(--bone);
+            border: 1px solid var(--cream-3);
+            border-radius: var(--radius);
+            padding: 10px 12px;
+            white-space: pre-wrap; word-break: break-word;
+            color: var(--muted-on-cream);
+            line-height: 1.5;
         }
 
-        /* ── SESSION HISTORY ── */
-        .history-card {
-            display: none; background: var(--surface);
-            border: 1.5px solid var(--border); border-radius: var(--radius-lg);
-            padding: 20px 24px; margin-bottom: 14px;
-        }
+        /* ───── HISTORY ───── */
+        .history-card { display: none; }
 
-        .history-wrap {
-            border: 1.5px solid var(--border);
-            border-radius: 10px;
-            overflow-x: auto;
-        }
+        .history-wrap { overflow-x: auto; }
+        .history-wrap::-webkit-scrollbar { height: 6px; }
+        .history-wrap::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
 
         .history-table {
-            width: 100%; border-collapse: collapse;
-            min-width: 620px;
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 640px;
         }
-
         .history-table th,
         .history-table td {
-            padding: 10px 12px;
+            padding: 12px 20px;
             font-size: 12px;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--line);
             text-align: left;
             white-space: nowrap;
         }
-
         .history-table th {
-            font-family: 'DM Mono', monospace;
-            color: var(--text-muted);
-            background: var(--surface-2);
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-3);
+            background: var(--ink-3);
             font-weight: 500;
-            letter-spacing: 0.2px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
         }
-
+        .history-table tbody tr { transition: background 0.15s; }
+        .history-table tbody tr:hover { background: var(--ink-3); }
         .history-table tr:last-child td { border-bottom: none; }
+        .history-table td { color: var(--text-2); }
+        .history-actions { display: flex; gap: 6px; }
 
-        .history-actions {
-            display: flex;
-            gap: 6px;
-        }
-
-        .history-btn {
-            display: flex; align-items: center; justify-content: center;
-            padding: 6px 10px; font-family: 'DM Sans', sans-serif;
-            font-size: 11px; font-weight: 500; cursor: pointer;
-            border-radius: 8px; border: 1.5px solid var(--border);
-            background: var(--surface-2); color: var(--text-muted);
-            transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s,
-                        border-color 0.15s, background 0.15s, color 0.15s;
-        }
-
-        .history-btn:hover {
-            border-color: var(--border-hover); background: #fff; color: var(--text);
-            transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.08);
-        }
-
-        .history-btn:active { transform: translateY(0) scale(0.97); }
-
-        /* ── TOAST ── */
+        /* ───── TOAST ───── */
         .toast-wrap {
-            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; display: flex; flex-direction: column; align-items: center; gap: 8px;
+            position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+            z-index: 1000;
+            display: flex; flex-direction: column-reverse; align-items: center; gap: 8px;
             pointer-events: none;
         }
-
         .toast {
-            background: #1a1d23; color: #fff; font-size: 13px; font-weight: 500;
-            padding: 10px 18px; border-radius: 10px;
-            opacity: 0; transform: translateY(8px);
-            transition: opacity 0.22s ease, transform 0.22s ease;
-            pointer-events: none; display: flex; align-items: center; gap: 8px; max-width: 360px;
+            background: var(--ink-2);
+            border: 1px solid var(--line-2);
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 500;
+            padding: 12px 18px;
+            border-radius: var(--radius);
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 0.22s, transform 0.22s;
+            display: flex; align-items: center; gap: 10px;
+            max-width: 380px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
-
         .toast.show { opacity: 1; transform: translateY(0); }
-        .toast.toast-error { background: #7f1d1d; }
-        .toast.toast-success { background: #064e3b; }
-        .toast svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
-
-        footer {
-            margin-top: 36px; padding-top: 20px;
-            border-top: 1.5px solid var(--border);
-            text-align: center; font-size: 12px; color: var(--text-dim);
+        .toast.toast-error {
+            border-color: var(--red);
+            color: var(--red);
         }
+        .toast.toast-success {
+            border-color: var(--volt);
+            color: var(--volt);
+        }
+        .toast svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        @media (max-width: 560px) {
-            header { flex-direction: column; align-items: flex-start; gap: 10px; }
-            body { padding: 20px 16px; }
+        /* ───── BADGE ───── */
+        .badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-3);
+            background: var(--ink-3);
+            border: 1px solid var(--line);
+            padding: 4px 10px;
+            border-radius: 3px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        /* cream-context badge */
+        .panel .badge {
+            color: var(--muted-on-cream);
+            background: var(--bone);
+            border-color: var(--cream-3);
+        }
+
+        /* ───── RESPONSIVE ───── */
+        @media (max-width: 960px) {
+            .shell { grid-template-columns: 1fr; }
+            .rail {
+                position: static;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+                padding: 20px 24px;
+                flex-direction: row;
+                gap: 16px;
+                align-items: center;
+                overflow-x: auto;
+            }
+            .rail-section-wrap, .rail-footer, .rail-stats-wrap { display: none; }
+            .main-header { padding: 24px 24px 20px; }
+            .main-body { padding: 24px; }
+            h1.display { font-size: 32px; }
+        }
+
+        @media (max-width: 640px) {
             .schema-grid { grid-template-columns: 1fr 1fr; }
-            .field-key { width: 42%; }
+            .custom-field-row { grid-template-columns: 1fr; }
+            .custom-field-row .remove-field-btn { height: 34px; width: 100%; }
+            .panel-head { flex-direction: column; align-items: flex-start; gap: 10px; padding: 18px 20px; }
+            .panel-body { padding: 20px; }
+            .results-summary { grid-template-columns: 1fr; }
+            .results-summary-cell { border-right: none; border-bottom: 1px solid var(--cream-3); }
+            .results-summary-cell:last-child { border-bottom: none; }
+            .fields-table td { padding: 12px 20px; }
+            .field-key-cell { width: 40%; }
+            .main-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+            h1.display { font-size: 26px; }
         }
     </style>
 </head>
@@ -575,157 +1140,265 @@
 
 <div class="toast-wrap" id="toastWrap"></div>
 
-<div class="wrap">
+<div class="shell">
 
-    <header>
-        <div class="logo">
-            <div class="logo-icon">
-                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+    <!-- ───── SIDE RAIL ───── -->
+    <aside class="rail">
+        <div>
+            <div class="brand">
+                <div class="brand-mark">D</div>
+                <div class="brand-name">Doc<em>Extract</em></div>
             </div>
-            <span class="logo-text">Doc<span>Extract</span></span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-            <div class="badge">Gemini · v1.0</div>
-            <a href="/analytics" class="badge" style="text-decoration:none">Analytics</a>
-        </div>
-    </header>
-
-    <!-- SCHEMA SELECT -->
-    <div class="card">
-        <div class="section-label">Document Type</div>
-        <div class="schema-grid" id="schemaGrid">
-            <!-- populated by JS -->
-        </div>
-
-        <!-- Custom fields editor -->
-        <div class="custom-fields-wrap" id="customFieldsWrap">
-            <div class="section-label" style="margin-top:4px">Define your fields</div>
-            <div id="customFieldsList"></div>
-            <button class="add-field-btn" id="addFieldBtn">
-                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Add field
-            </button>
-        </div>
-    </div>
-
-    <!-- UPLOAD -->
-    <div class="mode-toggle-row">
-        <button class="mode-toggle-btn active" id="singleModeBtn">Single document</button>
-        <button class="mode-toggle-btn" id="bulkModeBtn">Bulk upload</button>
-    </div>
-
-    <div class="upload-card" id="uploadCard">
-        <div class="upload-zone" id="uploadZone">
-            <input type="file" id="uploadInput" accept="image/*,.pdf" />
-            <div class="upload-icon">
-                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            </div>
-            <div class="upload-title" id="uploadTitle">Drop document here or click to browse</div>
-            <div class="upload-sub">PDF, PNG, JPG or WEBP · max 20 MB</div>
-        </div>
-
-        <div class="preview-strip" id="previewStrip">
-            <div id="previewThumbWrap"></div>
-            <div class="preview-info">
-                <div class="preview-name" id="previewName">—</div>
-                <div class="preview-size" id="previewSize">—</div>
-            </div>
-            <div class="preview-clear" id="previewClear">
-                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <div class="rail-meta">
+                <span class="pulse"></span>
+                <span>Live · Gemini 1.5 Flash</span>
             </div>
         </div>
 
-        <div style="padding: 0 8px 8px;">
-            <button class="run-btn" id="runBtn">Extract data</button>
+        <div class="rail-section-wrap">
+            <div class="rail-section-label">Workspace</div>
+            <nav class="nav-list">
+                <a class="nav-link active" href="/">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+                    Extractor
+                    <span class="num">01</span>
+                </a>
+                <a class="nav-link" href="/analytics">
+                    <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><polyline points="7 14 11 10 15 13 20 7"/></svg>
+                    Analytics
+                    <span class="num">02</span>
+                </a>
+            </nav>
         </div>
-    </div>
 
-    <div class="upload-card" id="bulkUploadCard" style="display:none">
-        <div class="upload-zone" id="bulkUploadZone">
-            <input type="file" id="bulkUploadInput" accept="image/*,.pdf" multiple />
-            <div class="upload-icon">
-                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            </div>
-            <div class="upload-title" id="bulkUploadTitle">Drop multiple documents or click to browse</div>
-            <div class="upload-sub">PDF, PNG, JPG or WEBP · max 20 MB each</div>
-        </div>
-
-        <div class="bulk-queue-wrap" id="bulkQueueWrap">
-            <div class="bulk-progress-row">
-                <div class="bulk-progress-track"><div class="bulk-progress-fill" id="bulkProgressFill"></div></div>
-                <div class="bulk-progress-text" id="bulkProgressText">0 / 0 files processed</div>
-            </div>
-            <div class="bulk-queue-list" id="bulkQueueList"></div>
-            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-                <button class="run-btn" id="bulkRunBtn" style="display:block;max-width:220px">Start bulk extraction</button>
-                <button class="export-btn" id="bulkClearBtn">Clear queue</button>
-            </div>
-            <div class="bulk-actions" id="bulkActions">
-                <button class="export-btn" id="bulkExportCsvBtn">Download all as CSV</button>
-                <button class="export-btn" id="bulkExportJsonBtn">Download all as JSON</button>
-                <button class="export-btn" id="bulkAppendCsvBtn">Append to existing CSV</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- LOADING -->
-    <div class="loading-card" id="loadingCard">
-        <div class="loading-inner">
-            <div class="spinner"></div>
-            <div class="loading-text"><strong>Extracting data</strong> — analyzing document</div>
-        </div>
-    </div>
-
-    <!-- RESULTS -->
-    <div class="results-card" id="resultsCard">
-        <div class="results-header">
-            <div class="section-label" style="margin-bottom:0">Extracted data</div>
-            <div style="display:flex;align-items:center;gap:8px">
-                <div class="export-row">
-                    <button class="export-btn" id="exportJson">
-                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        JSON
-                    </button>
-                    <button class="export-btn" id="exportCsv">
-                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        CSV
-                    </button>
-                    <button class="export-btn" id="appendCsvBtn">
-                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Append to CSV
-                    </button>
-                    <input type="file" id="appendCsvInput" class="hidden-file-input" accept=".csv,text/csv" />
+        <div class="rail-stats-wrap">
+            <div class="rail-section-label">This session</div>
+            <div class="rail-stats">
+                <div class="rail-stat">
+                    <div class="rail-stat-label">Processed</div>
+                    <div class="rail-stat-val tabular" id="railStatProcessed">0</div>
                 </div>
-                <div class="clear-results-btn" id="clearResultsBtn">
-                    <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <div class="rail-stat">
+                    <div class="rail-stat-label">Schemas</div>
+                    <div class="rail-stat-val tabular" id="railStatSchemas">5</div>
                 </div>
             </div>
         </div>
-        <table class="fields-table" id="fieldsTable"></table>
-    </div>
 
-    <!-- SESSION HISTORY -->
-    <div class="history-card" id="historyCard">
-        <div class="results-header">
-            <div class="section-label" style="margin-bottom:0">Session History</div>
-            <div class="badge" id="historyCount">0 entries</div>
+        <div class="rail-footer">
+            v1.0 · Demo build<br>
+            <a href="#">Docs</a> · <a href="#">API</a> · <a href="#">Status</a>
         </div>
-        <div class="history-wrap">
-            <table class="history-table">
-                <thead>
-                    <tr>
-                        <th>Filename</th>
-                        <th>Schema</th>
-                        <th>Time</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="historyTableBody"></tbody>
-            </table>
-        </div>
-    </div>
+    </aside>
 
-    <footer>Powered by Gemini 1.5 Flash · For demo and development use</footer>
+    <!-- ───── MAIN ───── -->
+    <main class="main">
+        <div class="main-header">
+            <div>
+                <div class="eyebrow">
+                    <span class="eyebrow-slash">//</span>
+                    <span>01 · Extractor</span>
+                    <span>—</span>
+                    <span>Structured data from any document</span>
+                </div>
+                <h1 class="display">Turn paper <em>into</em> pipeline.</h1>
+            </div>
+            <div class="header-right">
+                <span class="dot"></span>
+                <span id="clockText">—</span>
+            </div>
+        </div>
+
+        <div class="main-body">
+
+            <!-- ─── SCHEMA PANEL ─── -->
+            <section class="panel">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-kicker">Step 01 · Choose a schema</div>
+                        <div class="panel-title">What are we reading today?</div>
+                    </div>
+                    <div class="badge" id="schemaCountBadge">Loading…</div>
+                </div>
+
+                <div class="schema-grid" id="schemaGrid">
+                    <!-- populated by JS -->
+                </div>
+
+                <div class="custom-fields-wrap" id="customFieldsWrap">
+                    <div class="custom-fields-label">Define your fields</div>
+                    <div id="customFieldsList"></div>
+                    <button class="add-field-btn" id="addFieldBtn">
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add field
+                    </button>
+                </div>
+            </section>
+
+            <!-- ─── UPLOAD PANEL ─── -->
+            <section>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+                    <div>
+                        <div class="eyebrow" style="margin-bottom:4px"><span class="eyebrow-slash">//</span><span>Step 02 · Upload</span></div>
+                        <div style="font-family:'Instrument Serif',serif;font-size:24px;letter-spacing:-0.01em;line-height:1">Drop the document.</div>
+                    </div>
+                    <div class="mode-toggle-row">
+                        <button class="mode-toggle-btn active" id="singleModeBtn">Single <span class="tag">1</span></button>
+                        <button class="mode-toggle-btn" id="bulkModeBtn">Bulk <span class="tag">N</span></button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="upload-card" id="uploadCard">
+                        <div class="upload-zone" id="uploadZone">
+                            <input type="file" id="uploadInput" accept="image/*,.pdf" />
+                            <div class="upload-icon">
+                                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            </div>
+                            <div class="upload-title" id="uploadTitle">Drop document, <em>or click to browse</em></div>
+                            <div class="upload-sub">PDF · PNG · JPG · WEBP — max 20 MB</div>
+                        </div>
+
+                        <div class="preview-strip" id="previewStrip">
+                            <div id="previewThumbWrap"></div>
+                            <div class="preview-info">
+                                <div class="preview-name" id="previewName">—</div>
+                                <div class="preview-size" id="previewSize">—</div>
+                            </div>
+                            <div class="preview-clear" id="previewClear">
+                                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </div>
+                        </div>
+
+                        <button class="run-btn" id="runBtn">
+                            <span class="run-btn-inner">
+                                <span class="run-btn-label">Extract data</span>
+                                <span class="run-btn-arrow">Run <span class="run-btn-kbd">↵</span></span>
+                            </span>
+                        </button>
+                    </div>
+
+                    <div class="upload-card" id="bulkUploadCard" style="display:none">
+                        <div class="upload-zone" id="bulkUploadZone">
+                            <input type="file" id="bulkUploadInput" accept="image/*,.pdf" multiple />
+                            <div class="upload-icon">
+                                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                            </div>
+                            <div class="upload-title" id="bulkUploadTitle">Batch mode · <em>drop many at once</em></div>
+                            <div class="upload-sub">Process up to 100 docs in series · 20 MB each</div>
+                        </div>
+
+                        <div class="bulk-queue-wrap" id="bulkQueueWrap">
+                            <div class="bulk-progress-row">
+                                <div class="bulk-progress-track"><div class="bulk-progress-fill" id="bulkProgressFill"></div></div>
+                                <div class="bulk-progress-text" id="bulkProgressText">0 / 0 processed</div>
+                            </div>
+                            <div class="bulk-queue-list" id="bulkQueueList"></div>
+                            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                                <button class="run-btn" id="bulkRunBtn">
+                                    <span class="run-btn-inner">
+                                        <span class="run-btn-label">Start bulk extraction</span>
+                                        <span class="run-btn-arrow">Run</span>
+                                    </span>
+                                </button>
+                                <button class="export-btn" id="bulkClearBtn">Clear queue</button>
+                            </div>
+                            <div class="bulk-actions" id="bulkActions">
+                                <button class="export-btn" id="bulkExportCsvBtn">Download CSV</button>
+                                <button class="export-btn" id="bulkExportJsonBtn">Download JSON</button>
+                                <button class="export-btn" id="bulkAppendCsvBtn">Append to CSV</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─── LOADING ─── -->
+            <div class="loading-card" id="loadingCard">
+                <div class="loading-inner">
+                    <div class="spinner"></div>
+                    <div class="loading-text">
+                        <strong>Reading the document</strong>
+                        <span class="loading-text-sub">Tokenizing · extracting · validating</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── RESULTS ─── -->
+            <section class="panel results-card" id="resultsCard">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-kicker">Step 03 · Extracted data</div>
+                        <div class="panel-title">Here's what we found.</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div class="export-row">
+                            <button class="export-btn" id="exportJson">
+                                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                JSON
+                            </button>
+                            <button class="export-btn" id="exportCsv">
+                                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                CSV
+                            </button>
+                            <button class="export-btn" id="appendCsvBtn">
+                                <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Append
+                            </button>
+                            <input type="file" id="appendCsvInput" class="hidden-file-input" accept=".csv,text/csv" />
+                        </div>
+                        <div class="clear-results-btn" id="clearResultsBtn">
+                            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results-summary">
+                    <div class="results-summary-cell">
+                        <div class="results-summary-label">Document</div>
+                        <div class="results-summary-val" id="resultsMetaName">—</div>
+                    </div>
+                    <div class="results-summary-cell">
+                        <div class="results-summary-label">Schema</div>
+                        <div class="results-summary-val" id="resultsMetaSchema">—</div>
+                    </div>
+                    <div class="results-summary-cell">
+                        <div class="results-summary-label">Fields extracted</div>
+                        <div class="results-summary-val mono" id="resultsMetaCount">0</div>
+                    </div>
+                </div>
+
+                <div class="fields-table-wrap">
+                    <table class="fields-table" id="fieldsTable"></table>
+                </div>
+            </section>
+
+            <!-- ─── HISTORY ─── -->
+            <section class="panel-dark history-card" id="historyCard">
+                <div class="panel-head">
+                    <div>
+                        <div class="panel-kicker">Ledger</div>
+                        <div class="panel-title" style="color:var(--text)">Session history</div>
+                    </div>
+                    <div class="badge" id="historyCount">0 entries</div>
+                </div>
+                <div class="history-wrap">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Filename</th>
+                                <th>Schema</th>
+                                <th>Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+        </div>
+    </main>
 </div>
 
 <script>
@@ -746,6 +1419,25 @@
         bank_statement: `<svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
         custom: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`
     };
+    const SCHEMA_DESCS = {
+        invoice: "Bills · line items",
+        receipt: "POS · payments",
+        purchase_order: "Orders · SKUs",
+        bank_statement: "Transactions",
+        custom: "Your fields"
+    };
+
+    /* ── CLOCK ── */
+    function updateClock() {
+        const d = new Date();
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        const ss = String(d.getSeconds()).padStart(2, "0");
+        const el = document.getElementById("clockText");
+        if (el) el.textContent = `${hh}:${mm}:${ss} · ready`;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
 
     /* ── TOAST ── */
     const toastWrap = document.getElementById("toastWrap");
@@ -825,7 +1517,7 @@
         const completed = bulkQueue.filter(item => item.status === "done" || item.status === "failed").length;
         const percent = bulkQueue.length ? (completed / bulkQueue.length) * 100 : 0;
         fill.style.width = `${percent}%`;
-        txt.textContent = `${completed} / ${bulkQueue.length} files processed`;
+        txt.textContent = `${completed} / ${bulkQueue.length} processed`;
 
         list.innerHTML = bulkQueue.map((item, idx) => {
             let label = "Pending";
@@ -833,7 +1525,7 @@
             let prefix = "";
 
             if (item.status === "extracting") {
-                label = "Extracting…";
+                label = "Extracting";
                 cls = "extracting";
                 prefix = '<span class="tiny-spinner"></span>';
             } else if (item.status === "done") {
@@ -846,7 +1538,7 @@
 
             return `
                 <div class="bulk-queue-item" title="${escapeHtml(item.error || "")}">
-                    <div>${idx + 1}.</div>
+                    <div>${String(idx + 1).padStart(2, "0")}</div>
                     <div class="bulk-file-name">${escapeHtml(item.file.name)}</div>
                     <div class="bulk-file-size">${fmtSize(item.file.size)}</div>
                     <div class="status-badge ${cls}">${prefix}${label}</div>
@@ -984,6 +1676,11 @@
         return active ? active.textContent : currentSchema;
     }
 
+    function updateRailStats() {
+        const el = document.getElementById("railStatProcessed");
+        if (el) el.textContent = String(sessionHistory.length).padStart(2, "0");
+    }
+
     function addHistoryEntry(filename, schema, data) {
         sessionHistory.unshift({
             filename,
@@ -997,6 +1694,7 @@
         }
 
         renderHistory();
+        updateRailStats();
     }
 
     function renderHistory() {
@@ -1010,17 +1708,17 @@
         }
 
         historyCard.style.display = "block";
-        countEl.textContent = `${sessionHistory.length} ${sessionHistory.length === 1 ? "extraction" : "extractions"}`;
+        countEl.textContent = `${sessionHistory.length} ${sessionHistory.length === 1 ? "entry" : "entries"}`;
 
         tbody.innerHTML = sessionHistory.map((entry, idx) => `
             <tr>
-                <td title="${escapeHtml(entry.filename)}">${escapeHtml(entry.filename)}</td>
-                <td>${escapeHtml(entry.schema)}</td>
-                <td>${new Date(entry.timestamp).toLocaleTimeString([], { hour12: false })}</td>
+                <td title="${escapeHtml(entry.filename)}" style="color:var(--text);font-weight:500">${escapeHtml(entry.filename)}</td>
+                <td><span class="mono" style="font-size:11px;color:var(--volt)">${escapeHtml(entry.schema)}</span></td>
+                <td class="mono" style="font-size:11px;color:var(--text-3)">${new Date(entry.timestamp).toLocaleTimeString([], { hour12: false })}</td>
                 <td>
                     <div class="history-actions">
                         <button class="export-btn" data-action="view" data-idx="${idx}">View</button>
-                        <button class="export-btn" data-action="json" data-idx="${idx}">Download JSON</button>
+                        <button class="export-btn" data-action="json" data-idx="${idx}">JSON</button>
                     </div>
                 </td>
             </tr>
@@ -1034,16 +1732,26 @@
             const schemas = await res.json();
             const grid = document.getElementById("schemaGrid");
             grid.innerHTML = "";
-            schemas.forEach(s => {
+            schemas.forEach((s, i) => {
                 const btn = document.createElement("button");
                 btn.className = "schema-btn" + (s.id === currentSchema ? " active" : "");
                 btn.dataset.schema = s.id;
                 btn.innerHTML = `
-                    <div class="schema-icon-wrap">${SCHEMA_ICONS[s.id] || SCHEMA_ICONS.custom}</div>
-                    <div class="schema-name">${s.label}</div>`;
+                    <div class="schema-btn-top">
+                        <div class="schema-icon-wrap">${SCHEMA_ICONS[s.id] || SCHEMA_ICONS.custom}</div>
+                        <div class="schema-num">${String(i + 1).padStart(2, "0")}</div>
+                    </div>
+                    <div>
+                        <div class="schema-name">${s.label}</div>
+                        <div class="schema-desc">${SCHEMA_DESCS[s.id] || "Custom schema"}</div>
+                    </div>`;
                 btn.addEventListener("click", () => selectSchema(s.id));
                 grid.appendChild(btn);
             });
+            const cb = document.getElementById("schemaCountBadge");
+            if (cb) cb.textContent = `${schemas.length} available`;
+            const rs = document.getElementById("railStatSchemas");
+            if (rs) rs.textContent = String(schemas.length).padStart(2, "0");
         } catch(e) { showToast("Failed to load schemas", "error"); }
     }
 
@@ -1068,17 +1776,18 @@
     });
 
     updateModeUI();
+    updateRailStats();
 
     /* ── CUSTOM FIELDS ── */
-    document.getElementById("addFieldBtn").addEventListener("click", addCustomField);
+    document.getElementById("addFieldBtn").addEventListener("click", () => addCustomField());
 
     function addCustomField(key = "", desc = "") {
         const list = document.getElementById("customFieldsList");
         const row = document.createElement("div");
         row.className = "custom-field-row";
         row.innerHTML = `
-            <input type="text" placeholder="Field name (e.g. vendor_name)" value="${key}" class="cf-key"/>
-            <input type="text" placeholder="Description (e.g. Name of the vendor)" value="${desc}" class="cf-desc"/>
+            <input type="text" placeholder="field_name" value="${key}" class="cf-key"/>
+            <input type="text" placeholder="Describe what to extract" value="${desc}" class="cf-desc"/>
             <button class="remove-field-btn" title="Remove">
                 <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>`;
@@ -1125,7 +1834,7 @@
         document.getElementById("previewSize").textContent = fmtSize(file.size);
         document.getElementById("previewStrip").style.display = "flex";
         document.getElementById("runBtn").style.display = "block";
-        document.getElementById("uploadTitle").textContent = "Ready — click Extract or change file";
+        document.getElementById("uploadTitle").innerHTML = 'Locked in · <em>ready to extract</em>';
     }
 
     document.getElementById("uploadInput").addEventListener("change", e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
@@ -1143,7 +1852,7 @@
         document.getElementById("uploadInput").value = "";
         document.getElementById("previewStrip").style.display = "none";
         document.getElementById("runBtn").style.display = "none";
-        document.getElementById("uploadTitle").textContent = "Drop document here or click to browse";
+        document.getElementById("uploadTitle").innerHTML = 'Drop document, <em>or click to browse</em>';
         document.getElementById("previewThumbWrap").innerHTML = "";
     }
 
@@ -1186,7 +1895,7 @@
 
         const btn = document.getElementById("bulkRunBtn");
         btn.disabled = true;
-        btn.textContent = "Processing…";
+        btn.innerHTML = '<span class="run-btn-inner"><span class="run-btn-label">Processing…</span></span>';
 
         let ok = 0;
         let failed = 0;
@@ -1224,7 +1933,7 @@
 
         renderBulkQueue();
         btn.disabled = false;
-        btn.textContent = "Start bulk extraction";
+        btn.innerHTML = '<span class="run-btn-inner"><span class="run-btn-label">Start bulk extraction</span><span class="run-btn-arrow">Run</span></span>';
         showToast(`${ok} extracted successfully, ${failed} failed`, ok ? "success" : "error");
     }
 
@@ -1305,7 +2014,7 @@
 
         const runBtn = document.getElementById("runBtn");
         runBtn.disabled = true;
-        runBtn.textContent = "Extracting…";
+        runBtn.innerHTML = '<span class="run-btn-inner"><span class="run-btn-label">Extracting…</span></span>';
 
         document.getElementById("uploadCard").style.display = "none";
         document.getElementById("loadingCard").style.display = "block";
@@ -1340,7 +2049,7 @@
             showToast(err.message || "Extraction failed. Please try again.", "error");
         } finally {
             runBtn.disabled = false;
-            runBtn.textContent = "Extract data";
+            runBtn.innerHTML = '<span class="run-btn-inner"><span class="run-btn-label">Extract data</span><span class="run-btn-arrow">Run <span class="run-btn-kbd">↵</span></span></span>';
         }
     });
 
@@ -1349,7 +2058,17 @@
         const table = document.getElementById("fieldsTable");
         table.innerHTML = "";
 
-        Object.entries(data).forEach(([key, value]) => {
+        const entries = Object.entries(data);
+
+        // update summary
+        const metaName = document.getElementById("resultsMetaName");
+        const metaSchema = document.getElementById("resultsMetaSchema");
+        const metaCount = document.getElementById("resultsMetaCount");
+        if (metaName) metaName.textContent = selectedFile ? selectedFile.name : "—";
+        if (metaSchema) metaSchema.textContent = getCurrentSchemaLabel();
+        if (metaCount) metaCount.textContent = String(entries.length).padStart(2, "0");
+
+        entries.forEach(([key, value], idx) => {
             const tr = document.createElement("tr");
             const isNull = value === null || value === undefined || value === "";
             const isComplex = typeof value === "object" && value !== null;
@@ -1360,10 +2079,10 @@
             } else if (isComplex) {
                 displayVal = `<div class="field-value"><pre>${JSON.stringify(value, null, 2)}</pre></div>`;
             } else {
-                displayVal = `<div class="field-value">${String(value)}</div>`;
+                displayVal = `<div class="field-value">${escapeHtml(String(value))}</div>`;
             }
 
-            tr.innerHTML = `<td class="field-key">${key}</td><td>${displayVal}</td>`;
+            tr.innerHTML = `<td class="field-key-cell"><div class="field-key-wrap"><span class="field-key-num">${String(idx + 1).padStart(2, "0")}</span><span class="field-key">${escapeHtml(key)}</span></div></td><td>${displayVal}</td>`;
             table.appendChild(tr);
         });
     }
@@ -1472,5 +2191,8 @@
     document.getElementById("clearResultsBtn").addEventListener("click", fullClear);
     document.addEventListener("keydown", e => { if (e.key === "Escape") fullClear(); });
 </script>
+
 </body>
 </html>
+</content>
+</invoke>
